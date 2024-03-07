@@ -16,6 +16,9 @@ library(shinydashboard)
 library(shinyFiles)
 library(DT)
 library(openxlsx)
+library(lme4)
+library(Matrix)
+library(purrr)
 library(tidyverse)
 
 ui <- dashboardPage(
@@ -25,27 +28,21 @@ ui <- dashboardPage(
       menuItem("File Upload", tabName = "upload", icon = icon("cloud-upload")),
       menuItem("Selector", tabName = "selector", icon = icon("search")),
       menuItem("Viewer", tabName = "viewer", icon = icon("binoculars")),
+      menuItem(" Analyze", tabName = "analyze", icon = icon("calculator")),
       menuItem("Help", tabName = "help", icon = icon("question-circle"))
     )
   ),
   dashboardBody(
     tabItems(
       tabItem(tabName = "upload",
-        fluidPage(
-          fluidRow(column = 6,
-          h3("Select the directory that contains the corresponding set of images."), # nolint: line_length_linter.
-          p('e.g. "2020-11-17_15-00-00"'),
-          shinyDirButton("folder", "Select the image folder",
-                         "Please select image folder", multiple = FALSE),
-          br(),
-          br(),
-          fileInput("file", "Choose result file, e.g. 'Result .xlsx.'",
-                    accept = ".xlsx")
-          ),
-          fluidRow(column = 6,
-            actionButton("calculate", "Run Mixed Model")
-          )
-        )
+        h3("Select the directory that contains the corresponding set of images."), # nolint: line_length_linter.
+        p('e.g. "2020-11-17_15-00-00"'),
+        shinyDirButton("folder", "Select the image folder",
+                       "Please select image folder", multiple = FALSE),
+        br(),
+        br(),
+        fileInput("file", "Choose result file, e.g. 'Result .xlsx.'",
+                  accept = ".xlsx")
       ),
       tabItem(tabName = "selector",
         verbatimTextOutput("text"),
@@ -55,6 +52,25 @@ ui <- dashboardPage(
         fluidRow(
           column(width = 12,
             imageOutput("image", width = "100%", height = "800px")
+          )
+        )
+      ),
+      tabItem(tabName = "analyze",
+        fluidPage(
+          fluidRow(
+            column(width = 3,
+              fileInput("files", "Choose result files to run mixed model analysis, e.g. '06_09_2023_T1_21007 Results.xlsx'",
+                        multiple = TRUE, accept = ".xlsx"),
+              actionButton("calculate", "Run Mixed Model")
+            ),
+            column(width = 9,
+              conditionalPanel(
+                condition = "input.calculate > 0",
+                h3("Running mixed model analysis on:")
+              ),
+              verbatimTextOutput("text2"),
+              renderTable("results")
+            )
           )
         )
       ),
@@ -124,53 +140,21 @@ server <- function(input, output, clientData, session) { # nolint
     bindEvent(c(input$file, input$folder))
 
   observe({
-    df <- read_csv("INSERT FILE HERE IE GREENHOUSE2023.CSV")
+    files <- input$files
+    req(files)
+    if (is.null(files)) {
+      output$text2 <- renderPrint({
+        "No files selected, please upload files to analyze."
+      })
+    } else {
+      output$text2 <- renderPrint({
+        files_names <- files$name %>%
+          str_remove(" Results.xlsx")
+        paste(files_names, collapse = ", ")
+      })
 
-    df <- df %>%
-      mutate_at(vars(2:9), factor)
 
-    test <- summary(df)
-
-    results <- tibble()
-
-    column_names <- colnames(df)[10:18]
-
-    for (i in column_names) {
-
-      df2 <- df %>% select(colnames(df)[2:9], i) %>% rename(pheno = i)
-
-      proportion_zeros <- mean(df2$pheno, na.rm = TRUE)
-      if (proportion_zeros <= 0.5) {
-        mean <- df2 %>% group_by(sample, test, treatment) %>%
-          summarise(mean = mean(pheno, na.rm = TRUE)) %>%
-          ungroup()
-          results <- tibble(pheno = mean$mean,
-                            test = mean$test,
-                            treatment = mean$treatment,
-                            sample = mean$sample,
-                            status = "Averaged",
-                            dpi = i) %>%
-          rbind(results)
-
-      } else {
-
-      model <- lmer(pheno ~ test + treatment + (1 | sample) + (1 | sample:test:treatment), # nolint: line_length_linter.
-                    data = df2,
-                    REML = FALSE,
-                    na.action = na.omit)
-      results2 <- model@frame %>%
-        mutate(status = "Predicted") %>%
-        mutate(dpi = i) %>%
-        rbind(results)
     }
-  }
-
-    # Replace predicted values less than 0 with 0
-    results %<>% 
-      mutate(predicted.value = ifelse(predicted.value < 0, 0, predicted.value))
-
-    write.csv(results, file = "MYRESULTS.csv")
-
   }) %>%
     bindEvent(input$calculate)
 }

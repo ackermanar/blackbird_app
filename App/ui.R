@@ -90,7 +90,7 @@ ui <- dashboardPage(
       tabItem(tabName = "help",
         h3("Help"),
         p("Blackbird Image Lookup is designed to help you quickly look up the corresponding image for a result file, allowing quick image validation."), # nolint: line_length_linter.
-        h4("Instructions for viewing images:")
+        h4("Instructions for viewing images:"),
         p("First, using the file upload tab, please select the directory that contains the images and the result file."),
         p("Second, using selector tab, select a value in the displayed result file."),
         p("Finally, using the viewer tab, validate the image. The image will be displayed at a size according to the user viewport.")

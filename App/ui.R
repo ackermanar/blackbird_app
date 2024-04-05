@@ -83,7 +83,7 @@ ui <- dashboardPage(
           verbatimTextOutput("text3"),
           checkboxInput("rotate", "Rotate axes of AUDPC visualizer", value = FALSE, width = NULL),
           plotOutput("plot_audpc")
-        ),
+        )
       ),
       tabItem(tabName = "help",
         h3("Help"),
@@ -91,7 +91,7 @@ ui <- dashboardPage(
         h4("Instructions for viewing images:"),
         p("First, using the file upload tab, please select the directory that contains the images and the result file."),
         p("Second, using selector tab, select a value in the displayed result file."),
-        p("Finally, using the viewer tab, validate the image. The image will be displayed at a size according to the user viewport.")
+        p("Finally, using the viewer tab, validate the image. The image will be displayed at a size according to the user viewport."),
         h4("Instructions for running mixed model analysis and using AUDPC visualizer:"),
         p("First, using the analyze tab, select the result files to run mixed model analysis on. As little or as many files can be selected using cmd/cntrl + click or shift + click."),
         p("Second, click the 'Run Mixed Model Analysis' button to run the mixed model analysis. The results will be displayed in an interactive table."),

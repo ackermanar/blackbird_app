@@ -60,9 +60,9 @@ ui <- dashboardPage(
               br(),
               br(),
               checkboxGroupInput("filesForDownload", "Output Files to download:",
-                                 choices = c("Mixed model results" = "1phase",
-                                   "AUDPC from Mixed Model" = "2phase",
-                                   "Mixed model from AUPDC" = "audpcMod"),
+                                 choices = c("Mixed model 1phase" = "1phase",
+                                   "Mixed model 2phase" = "2phase",
+                                   "AUDPC" = "audpcMod"),
                                   selected = c("Mixed model results" = "1phase",
                                    "AUDPC from Mixed Model" = "2phase",
                                    "Mixed model from AUPDC" = "audpcMod")),
@@ -90,9 +90,22 @@ ui <- dashboardPage(
       tabItem(tabName = "help",
         h3("Help"),
         p("Blackbird Image Lookup is designed to help you quickly look up the corresponding image for a result file, allowing quick image validation."), # nolint: line_length_linter.
+        h4("Instructions for viewing images:")
         p("First, using the file upload tab, please select the directory that contains the images and the result file."),
         p("Second, using selector tab, select a value in the displayed result file."),
         p("Finally, using the viewer tab, validate the image. The image will be displayed at a size according to the user viewport.")
+        h4("Instructions for running mixed model analysis and using AUDPC visualizer:")
+        p("First, using the analyze tab, select the result files to run mixed model analysis on. As little or as many files can be selected using cmd/cntrl + click or shift + click."),
+        p("Second, click the 'Run Mixed Model Analysis' button to run the mixed model analysis. The results will be displayed in an interactive table."),
+        p("Third, select up to ten different rows in the interactive table  to visualize in the AUDPC visualizer."),
+        p("Fourth, click the 'Audpc' button to view ADUPC per sample/iso combination."),
+        h4("Instructions for downloading results:"),
+        p("First, in the Analyze tab, select the output files you would like to download using the checkboxes."),
+        p("Second, click the 'Download Selected Results' button to download the selected files."),
+        h4("Results files explained:")
+        p("Mixed model 1phase:  includes a prediction for every individual dpi per sample/iso/test/date combination."),
+        p("Mixed model 2phase: includes a prediction for every individual dpi per sample/iso combination, this will be the most accurate prediction model, but with less data than 1phase."),
+        p("Mixed model on AUPDC: performs mixed model on AUDPC for each sample/iso combination. Due to higher standard error across samples than AUDPC per sample, this may be an optimal solution.")
       )
     )
   )

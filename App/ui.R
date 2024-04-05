@@ -15,7 +15,7 @@ library(tidyverse)
 
 source("functions.R")
 
-dashboardPage(
+ui <- dashboardPage(
   dashboardHeader(title = "Blackbird Image Lookup"),
   dashboardSidebar(
     sidebarMenu(

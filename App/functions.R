@@ -20,14 +20,3 @@ hasConverged <- function (mm) {
   }
   return(retval)
 }
-
-install_if_missing("lme4")
-library(lme4)
-
-get_root_dir <- function() {
-  if (.Platform$OS.type == "unix") {
-      return(normalizePath("~"))
-  } else {
-      return(normalizePath("C:/"))
-  }
-}

@@ -15,7 +15,15 @@ library(tidyverse)
 
 source("functions.R")
 
-function(input, output, clientData, session) { # nolint
+get_root_dir <- function() {
+  if (.Platform$OS.type == "unix") {
+      return(normalizePath("~"))
+  } else {
+      return(normalizePath("C:/"))
+  }
+}
+
+server <- function(input, output, clientData, session) { # nolint
 
   # Select and view the image
   shinyDirChoose(input, "folder", roots = c("home" = get_root_dir()), session = session, filetypes = NULL)

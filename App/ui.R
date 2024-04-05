@@ -61,12 +61,10 @@ ui <- dashboardPage(
               br(),
               checkboxGroupInput("filesForDownload", "Output Files to download:",
                                  choices = c("Mixed model 1phase" = "1phase",
-                                   "Mixed model 2phase" = "2phase",
-                                   "AUDPC" = "audpcMod"),
-                                  selected = c("Mixed model results" = "1phase",
-                                   "AUDPC from Mixed Model" = "2phase",
-                                   "Mixed model from AUPDC" = "audpcMod")),
-              downloadButton("download", "Download Selected Results"),
+                                             "Mixed model 2phase" = "2phase",
+                                             "AUDPC" = "audpcMod"),
+                                 selected = c("1phase", "2phase", "audpcMod")),
+              downloadButton("download", "Download Selected Results")
             ),
             column(width = 9,
               conditionalPanel(

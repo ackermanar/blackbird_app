@@ -13,6 +13,8 @@ library(Matrix)
 library(purrr)
 library(tidyverse)
 
+source("functions.R")
+
 dashboardPage(
   dashboardHeader(title = "Blackbird Image Lookup"),
   dashboardSidebar(

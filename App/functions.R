@@ -22,9 +22,9 @@ hasConverged <- function (mm) {
 }
 
 get_root_dir <- function() {
-if (.Platform$OS.type == "unix") {
-    return(normalizePath("~"))
-} else {
-    return(normalizePath("C:/"))
-}
+  if (.Platform$OS.type == "unix") {
+      return(normalizePath("~"))
+  } else {
+      return(normalizePath("C:/"))
+  }
 }

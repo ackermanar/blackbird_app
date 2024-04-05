@@ -13,6 +13,8 @@ library(Matrix)
 library(purrr)
 library(tidyverse)
 
+source("functions.R")
+
 function(input, output, clientData, session) { # nolint
 
   # Select and view the image

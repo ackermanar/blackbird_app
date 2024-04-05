@@ -94,7 +94,7 @@ ui <- dashboardPage(
         p("First, using the file upload tab, please select the directory that contains the images and the result file."),
         p("Second, using selector tab, select a value in the displayed result file."),
         p("Finally, using the viewer tab, validate the image. The image will be displayed at a size according to the user viewport.")
-        h4("Instructions for running mixed model analysis and using AUDPC visualizer:")
+        h4("Instructions for running mixed model analysis and using AUDPC visualizer:"),
         p("First, using the analyze tab, select the result files to run mixed model analysis on. As little or as many files can be selected using cmd/cntrl + click or shift + click."),
         p("Second, click the 'Run Mixed Model Analysis' button to run the mixed model analysis. The results will be displayed in an interactive table."),
         p("Third, select up to ten different rows in the interactive table  to visualize in the AUDPC visualizer."),

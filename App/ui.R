@@ -102,7 +102,7 @@ ui <- dashboardPage(
         h4("Instructions for downloading results:"),
         p("First, in the Analyze tab, select the output files you would like to download using the checkboxes."),
         p("Second, click the 'Download Selected Results' button to download the selected files."),
-        h4("Results files explained:")
+        h4("Results files explained:"),
         p("Mixed model 1phase:  includes a prediction for every individual dpi per sample/iso/test/date combination."),
         p("Mixed model 2phase: includes a prediction for every individual dpi per sample/iso combination, this will be the most accurate prediction model, but with less data than 1phase."),
         p("Mixed model on AUPDC: performs mixed model on AUDPC for each sample/iso combination. Due to higher standard error across samples than AUDPC per sample, this may be an optimal solution.")

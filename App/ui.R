@@ -1,3 +1,4 @@
+source("functions.R")
 required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "DT", "openxlsx", "tidyverse")
 install_if_missing(required_packages)
 
@@ -12,8 +13,6 @@ library(lme4)
 library(Matrix)
 library(purrr)
 library(tidyverse)
-
-source("functions.R")
 
 ui <- dashboardPage(
   dashboardHeader(title = "Blackbird Image Lookup"),

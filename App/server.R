@@ -117,7 +117,7 @@ server <- function(input, output, clientData, session) { # nolint
         tray <- TrayIso[[1]][1]
         iso <- TrayIso[[1]][2]
 
-        df <- read.xlsx(xlsxFile = .x,
+        df <- read.xlsx(xlsxFile = .y,
                         colNames = TRUE,
                         rowNames = FALSE,
                         detectDates = TRUE,
@@ -308,7 +308,7 @@ server <- function(input, output, clientData, session) { # nolint
         tray <- TrayIso[[1]][1]
         iso <- TrayIso[[1]][2]
 
-        df <- read.xlsx(xlsxFile = .x,
+        df <- read.xlsx(xlsxFile = .y,
                         colNames = TRUE,
                         rowNames = FALSE,
                         detectDates = TRUE,

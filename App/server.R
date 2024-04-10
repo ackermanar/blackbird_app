@@ -109,7 +109,7 @@ server <- function(input, output, clientData, session) { # nolint
       jobs <- files$datapath
 
       # audpuc from mixed model
-      results1 <- map_dfr(names, jobs, ~{
+      results1 <- map2_dfr(names, jobs, ~{
         meta <- str_remove(basename(.x), "_Results*") %>%
           strsplit("_T")
         date <- meta[[1]][1]
@@ -301,7 +301,7 @@ server <- function(input, output, clientData, session) { # nolint
             }
           }
       })
-  
+
       # Mixed model from audpc
       results2 <- map2_dfr(names, jobs, ~{
         meta <- str_remove(basename(.x), "_Results*") %>%

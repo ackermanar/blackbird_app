@@ -30,9 +30,7 @@ hasConverged <- function (mm) {
 }
 
 jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx")
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx")
 
 
 results <- map_dfr(jobs, ~{

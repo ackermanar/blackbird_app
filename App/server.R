@@ -311,7 +311,7 @@ server <- function(input, output, clientData, session) { # nolint
         tray <- TrayIso[[1]][1]
         iso <- TrayIso[[1]][2]
 
-        df <- read.xlsx(xlsxFile = .y,
+        df <- read.xlsx(xlsxFile = .x,
                         colNames = TRUE,
                         rowNames = FALSE,
                         detectDates = TRUE,
@@ -340,13 +340,12 @@ server <- function(input, output, clientData, session) { # nolint
 
         return(df)
       }) %>%
-        select(-ID, -Rep) %>%
-        distinct() %>%
-        select(Sample, Date, Iso, everything()) %>%
-        pivot_longer(cols = -c(Sample, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
+        select(-ID) %>%
+        select(Sample, Rep, Date, Iso, everything()) %>%
+        pivot_longer(cols = -c(Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
         mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
         na.omit(Pheno) %>%
-        group_by(Sample, Date, Iso, Tray) %>%
+        group_by(Sample, Rep, Date, Iso, Tray) %>%
         summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
         ungroup() %>%
         group_split(Iso) %>%
@@ -362,7 +361,13 @@ server <- function(input, output, clientData, session) { # nolint
             group_by(Tray) %>%
             summarise(n())
 
-          if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
+          sumSample <- .x %>%
+            group_by(Sample) %>%
+            summarise(n())
+
+          if (nrow(sumSample) < 5) {
+            return(.x)
+          } else if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
             model <- lmer(absoluteAUDPC ~ (1 | Sample), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
@@ -472,6 +477,7 @@ server <- function(input, output, clientData, session) { # nolint
             return(results)
           }
         })
+
       if (length(unique(results1$Iso)) == 1) {
       model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
                   data = results1,

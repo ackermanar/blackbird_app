@@ -28,9 +28,7 @@ hasConverged <- function (mm) {
 }
 
 jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx")
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx")
 
 results <- map_dfr(jobs, ~{
   meta <- str_remove(basename(.x), "_Results*") %>%
@@ -69,13 +67,12 @@ results <- map_dfr(jobs, ~{
 
   return(df)
 }) %>%
-  select(-ID, -Rep) %>%
-  distinct() %>%
-  select(Sample, Date, Iso, everything()) %>%
-  pivot_longer(cols = -c(Sample, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
+  select(-ID) %>%
+  select(Sample, Rep, Date, Iso, everything()) %>%
+  pivot_longer(cols = -c(Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
   mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
   na.omit(Pheno) %>%
-  group_by(Sample, Date, Iso, Tray) %>%
+  group_by(Sample, Rep, Date, Iso, Tray) %>%
   summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
   ungroup() %>%
   group_split(Iso) %>%
@@ -91,7 +88,13 @@ results <- map_dfr(jobs, ~{
       group_by(Tray) %>%
       summarise(n())
 
-    if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
+    sumSample <- .x %>%
+      group_by(Sample) %>%
+      summarise(n())
+
+    if (nrow(sumSample) < 5) {
+      return(.x)
+    } else if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
       model <- lmer(absoluteAUDPC ~ (1 | Sample), # nolint: line_length_linter.
                     data = .x,
                     REML = TRUE,

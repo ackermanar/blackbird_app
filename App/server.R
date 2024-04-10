@@ -109,7 +109,7 @@ server <- function(input, output, clientData, session) { # nolint
       jobs <- files$datapath
 
       # audpuc from mixed model
-      results1 <- map2_dfr(names, jobs, ~{
+      results1 <- map_dfr(names, jobs, ~{
         meta <- str_remove(basename(.x), "_Results*") %>%
           strsplit("_T")
         date <- meta[[1]][1]
@@ -144,7 +144,9 @@ server <- function(input, output, clientData, session) { # nolint
           colnames(df) <- str_remove(colnames(df), "dpi")
         }
 
+        return(df)
       }) %>%
+        select(-ID, -Rep) %>%
         select(Sample, Date, Tray, Iso, everything()) %>%
         pivot_longer(cols = -c("Sample", "Date", "Tray", "Iso"), names_to = "DPI", values_to = "Pheno") %>%
         mutate(DPI = str_remove_all(DPI, "dpi")) %>%
@@ -298,7 +300,8 @@ server <- function(input, output, clientData, session) { # nolint
               stop(paste("Mixed model failed to run on samples taken at", dpi, "please ensure there are enough samples to run mixed model analysis."))
             }
           }
-        })
+      })
+  
       # Mixed model from audpc
       results2 <- map2_dfr(names, jobs, ~{
         meta <- str_remove(basename(.x), "_Results*") %>%
@@ -336,13 +339,14 @@ server <- function(input, output, clientData, session) { # nolint
         }
 
         return(df)
-        }) %>%
+      }) %>%
+        select(-ID, -Rep) %>%
         distinct() %>%
         select(Sample, Date, Iso, everything()) %>%
-        pivot_longer(cols = -c(ID, Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
+        pivot_longer(cols = -c(Sample, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
         mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
         na.omit(Pheno) %>%
-        group_by(Sample, Date, Iso, Tray, ID, Rep) %>%
+        group_by(Sample, Date, Iso, Tray) %>%
         summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
         ungroup() %>%
         group_split(Iso) %>%
@@ -428,6 +432,9 @@ server <- function(input, output, clientData, session) { # nolint
                             data = .x,
                             REML = TRUE,
                             na.action = na.omit)
+              if (hasConverged(model) == 1) {
+                print("Success! Model has converged on second attempt")
+              }
             }
           }
           if (is.null(model)) {
@@ -465,7 +472,6 @@ server <- function(input, output, clientData, session) { # nolint
             return(results)
           }
         })
-
       if (length(unique(results1$Iso)) == 1) {
       model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
                   data = results1,

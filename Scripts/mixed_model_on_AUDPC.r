@@ -69,12 +69,13 @@ results <- map_dfr(jobs, ~{
 
   return(df)
 }) %>%
+  select(-ID, -Rep) %>%
   distinct() %>%
   select(Sample, Date, Iso, everything()) %>%
-  pivot_longer(cols = -c(ID, Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
+  pivot_longer(cols = -c(Sample, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
   mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
   na.omit(Pheno) %>%
-  group_by(Sample, Date, Iso, Tray, ID, Rep) %>%
+  group_by(Sample, Date, Iso, Tray) %>%
   summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
   ungroup() %>%
   group_split(Iso) %>%

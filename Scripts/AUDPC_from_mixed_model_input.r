@@ -29,36 +29,52 @@ hasConverged <- function (mm) {
   return(retval)
 }
 
-jobs <- list("/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_09_2023_T2_21007 Results.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_09_2023_T1_21007 Results.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_09_2023_T3_22031 Results.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_10_2023_T1_21007 Results.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_10_2023_T1_21007 Results.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/blackbird_app/Data/HempDMNet3/06_10_2023_T2_22031 Results.xlsx")
+jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx")
+
 
 results <- map_dfr(jobs, ~{
-  meta <- str_remove(basename(.x), " Results.xlsx") %>%
+  meta <- str_remove(basename(.x), "_Results*") %>%
     strsplit("_T")
   date <- meta[[1]][1]
-  testIso <- strsplit(meta[[1]][2], "_")
-  test <- testIso[[1]][1]
-  iso <- testIso[[1]][2]
+  TrayIso <- strsplit(meta[[1]][2], "_")
+  tray <- TrayIso[[1]][1]
+  iso <- TrayIso[[1]][2]
 
   df <- read.xlsx(xlsxFile = .x,
                   colNames = TRUE,
                   rowNames = FALSE,
                   detectDates = TRUE,
                   skipEmptyRows = TRUE,
-                  na.strings = "N/A") %>%
-    mutate(Date = date, Test = test, Iso = iso)
+                  na.strings = c("N/A", "NA")) %>%
+    filter(str_detect(Sample, "_")) %>%
+    mutate(Date = date, Tray = tray, Iso = iso) %>%
+    separate(Sample, c("ID", "Sample"),
+             sep = "-",
+             extra = "merge",
+             fill = "right") %>%
+    mutate(Sample = str_replace(Sample, "(.*)_", "\\1-")) %>%
+    separate(Sample, c("Sample", "Iso"),
+             sep = "-") %>%
+    mutate(Sample = str_replace(Sample, "(.*)_", "\\1-")) %>%
+    separate(Sample, c("Sample", "Rep"),
+             sep = "-")
 
-  df$Sample <- str_remove_all(df$Sample, "[\\-_0-9]")
+  if (any(str_detect(colnames(df), "_"))) {
+    colnames(df) <- str_remove(colnames(df), ".*_")
+  }
 
-  colnames(df) <- str_remove(colnames(df), ".*_")
+  if (any(str_detect(colnames(df), "dpi"))) {
+    colnames(df) <- str_remove(colnames(df), "dpi")
+  }
+
   return(df)
 }) %>%
-  select(Sample, Date, Test, Iso, everything()) %>%
-  pivot_longer(cols = -c("Sample", "Date", "Test", "Iso"), names_to = "DPI", values_to = "Pheno") %>%
+  select(-ID, -Rep) %>%
+  select(Sample, Date, Tray, Iso, everything()) %>%
+  pivot_longer(cols = -c("Sample", "Date", "Tray", "Iso"), names_to = "DPI", values_to = "Pheno") %>%
   mutate(DPI = str_remove_all(DPI, "dpi")) %>%
   mutate(DPI = as.numeric(DPI)) %>%
   na.omit(Pheno) %>%
@@ -70,12 +86,12 @@ results <- map_dfr(jobs, ~{
     model <- NULL
 
     zero_counts <- .x %>%
-      group_by(Sample, Date, Test) %>%
+      group_by(Sample, Date, Tray) %>%
       summarise(zero_count = sum(Pheno == 0, na.rm = TRUE) / n()) %>%
       mutate(varianceThreshold = zero_count <= 0.25) %>%
       select(-zero_count)
 
-    df <- .x %>% left_join(zero_counts, by = c("Sample","Date", "Test"), relationship = "many-to-many") %>%
+    df <- .x %>% left_join(zero_counts, by = c("Sample","Date", "Tray"), relationship = "many-to-many") %>%
       group_by(Sample, Date) %>%
       mutate(SE = sd(Pheno, na.rm = TRUE) / length(na.omit(Pheno))) %>%
       ungroup()
@@ -95,14 +111,14 @@ results <- map_dfr(jobs, ~{
     if (nrow(df_high_var) == 0) {
 
       results <- df_low_var %>%
-        select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE) %>%
+        select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE) %>%
         arrange(desc(Sample), desc(Iso), Date)
 
     } else if (nrow(sumSample) < 5) {
 
       results <- df_high_var %>%
         mutate(Value = 0, Status = "Low Sample Count, Zeroed", Iso = iso, DPI = dpi, Residual = NA) %>%
-        select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE) %>%
+        select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE) %>%
         rbind(df_low_var) %>%
         arrange(desc(Sample), desc(Iso), Date)
 
@@ -112,11 +128,11 @@ results <- map_dfr(jobs, ~{
         group_by(Date) %>%
         summarise(n())
 
-      sumTest <- df_high_var %>%
-        group_by(Test) %>%
+      sumTray <- df_high_var %>%
+        group_by(Tray) %>%
         summarise(n())
 
-      if (nrow(sumDate) == 1 && nrow(sumTest) == 1) {
+      if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
         model <- lm(Pheno ~ Sample,
                     data = df_high_var,
                     na.action = na.omit)
@@ -131,18 +147,18 @@ results <- map_dfr(jobs, ~{
           mutate(Value = pred,
                  SE = se,
                  Date = unique(sumDate$Date),
-                 Test = unique(sumTest$Test),
+                 Tray = unique(sumTray$Tray),
                  Status = "Predicted",
                  Residual = res,
                  Iso = iso,
                  DPI = dpi) %>%
           rbind(df_low_var) %>%
           arrange(desc(Sample), desc(Iso), Date) %>%
-          select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE)
+          select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
         return(results)
         print("Model 1")
-      } else if (nrow(sumDate) == 1 && nrow(sumTest) > 1) {
-        model <- lm(Pheno ~ Test + Sample, # nolint: line_length_linter.
+      } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
+        model <- lm(Pheno ~ Tray + Sample, # nolint: line_length_linter.
                     data = df_high_var,
                     na.action = na.omit)
 
@@ -162,14 +178,14 @@ results <- map_dfr(jobs, ~{
                  DPI = dpi)
         return(results)
         print("Model 2")
-      } else if (nrow(sumDate) > 1 && nrow(sumTest) > 1) {
-        model <- lmer(Pheno ~ Sample + (1 | Date/Test), # nolint: line_length_linter.
+      } else if (nrow(sumDate) > 1 && nrow(sumTray) > 1) {
+        model <- lmer(Pheno ~ Sample + (1 | Date/Tray), # nolint: line_length_linter.
                       data = df_high_var,
                       REML = TRUE,
                       na.action = na.omit)
         if (hasConverged(model) != 1) {
           print(paste(dpi, iso, "has not converged, retrying model."))
-          model <- lmer(Pheno ~ Sample + (1 | Date:Test), # nolint: line_length_linter.
+          model <- lmer(Pheno ~ Sample + (1 | Date:Tray), # nolint: line_length_linter.
                         data = df_high_var,
                         REML = TRUE,
                         na.action = na.omit)
@@ -177,7 +193,7 @@ results <- map_dfr(jobs, ~{
         if (hasConverged(model) == 1) {
           print(paste(dpi, iso, "has converged succesfully!"))
         } else {
-          model <- lm(Pheno ~ Sample + Date + Test, # nolint: line_length_linter.
+          model <- lm(Pheno ~ Sample + Date + Tray, # nolint: line_length_linter.
                       data = df_high_var,
                       na.action = na.omit)
           print(paste(dpi, iso, "converged as lm."))
@@ -201,7 +217,7 @@ results <- map_dfr(jobs, ~{
                  DPI = dpi) %>%
           rbind(df_low_var) %>%
           arrange(desc(Sample), desc(Iso), Date) %>%
-          select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE)
+          select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
         return(results)
         print("Model 3")
       } else if (is.null(model)) {
@@ -228,19 +244,20 @@ pred_mod <- predict(model, se.fit = TRUE)
 pred <- pred_mod$fit
 se <- pred_mod$se.fit
 
-audpc_mod <- model@frame %>%
+audpcMod <- model@frame %>%
   mutate(Value = pred, SE = se) %>%
   mutate(Value = if_else(Value < 0, 0, Value)) %>%
-  select(!Pheno) %>%
-  select(Sample, Iso, DPI, Value, SE) %>%
-  distinct()
+  select(!Pheno)
 
-if (!any(colnames(audpc_mod) == "Iso")) {
-  audpc_mod <- audpc_mod %>%
+if (!any(colnames(audpcMod) == "Iso")) {
+  audpcMod <- audpcMod %>%
     mutate(Iso = unique(results$Iso), .after = "Sample") 
 }
 
-resultsSelect <- audpc_mod %>%
+audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%
+  distinct()
+
+resultsSelect <- audpcMod %>%
   group_by(Sample, Iso) %>%
   summarise(minDPI = min(DPI, na.rm = TRUE),
     maxDPI = max(DPI, na.rm = TRUE),
@@ -249,7 +266,7 @@ resultsSelect <- audpc_mod %>%
 Sample <- "AB"
 Iso <- "21007"
 
-resultsAUDPC <- audpc_mod %>%
+resultsAUDPC <- audpcMod %>%
   filter(Sample %in% c("AB", "AR", "ASCS", "Abacus"), Iso %in% c("21007", "22031"))
 
 # Create the line plot
@@ -262,7 +279,7 @@ linePlot <- ggplot(resultsAUDPC, aes(x = DPI, y = Value, color = Sample)) +
   scale_x_continuous(breaks = seq(floor(min(df$DPI)), ceiling(max(df$DPI)), by = 1))
 plot(linePlot)
 
-audpc_table <- audpc_mod %>%
+audpc_table <- audpcMod %>%
   group_split(Sample, Iso) %>%
   map_dfr(~{
     dpis <- .x$DPI

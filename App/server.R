@@ -123,6 +123,7 @@ server <- function(input, output, clientData, session) { # nolint
                         detectDates = TRUE,
                         skipEmptyRows = TRUE,
                         na.strings = c("N/A", "NA")) %>%
+          select(-any_of("Notes")) %>%
           filter(str_detect(Sample, "_")) %>%
           mutate(Date = date, Tray = tray, Iso = iso) %>%
           separate(Sample, c("ID", "Sample"),
@@ -333,6 +334,7 @@ server <- function(input, output, clientData, session) { # nolint
                         detectDates = TRUE,
                         skipEmptyRows = TRUE,
                         na.strings = c("N/A", "NA")) %>%
+          select(-any_of("Notes")) %>%
           filter(str_detect(Sample, "_")) %>%
           mutate(Date = date, Tray = tray, Iso = iso) %>%
           separate(Sample, c("ID", "Sample"),

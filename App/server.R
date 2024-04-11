@@ -587,11 +587,11 @@ server <- function(input, output, clientData, session) { # nolint
           }
           if (any(input$filesForDownload %in% "audpcMod1")) {
             write.csv(results2, file = paste0("mixed_model_on_audpc", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("mixed_model_audpc", Sys.Date(), ".csv"))
+            fs <- c(fs, paste0("mixed_model_on_audpc", Sys.Date(), ".csv"))
           }
           if (any(input$filesForDownload %in% "audpcMod2")) {
             write.csv(audpcTable, file = paste0("audpc_from_mixed_model", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("audpc_mixed_model", Sys.Date(), ".csv"))
+            fs <- c(fs, paste0("audpc_from_mixed_model", Sys.Date(), ".csv"))
           }
           zip(zipfile=fname, files=fs)
         },

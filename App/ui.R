@@ -65,7 +65,7 @@ ui <- dashboardPage(
                                  choices = c("Mixed model 1phase" = "1phase",
                                              "Mixed model 2phase" = "2phase",
                                              "mixed model on AUDPC" = "audpcMod1",
-                                             "AUDPC on mixed model" = "audpcMod2"),
+                                             "AUDPC from mixed model" = "audpcMod2"),
                                  selected = c("1phase", "2phase", "audpcMod1", "audpcMod2")),
               downloadButton("download", "Download Selected Results")
             ),

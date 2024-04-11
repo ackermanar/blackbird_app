@@ -29,8 +29,8 @@ hasConverged <- function (mm) {
   return(retval)
 }
 
-jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx")
+jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx")
 
 
 results <- map_dfr(jobs, ~{
@@ -155,6 +155,27 @@ results <- map_dfr(jobs, ~{
           select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
         return(results)
         print("Model 1")
+      } else if (nrow(sumDate) > 1 && nrow(sumTray) == 1) {
+        model <- lm(Pheno ~ Sample + Date, # nolint: line_length_linter.
+                    data = df_high_var,
+                    na.action = na.omit)
+
+          sum_mod <- summary(model)
+          res <- sum_mod$residuals
+          pred_mod <- predict(model, se.fit = TRUE)
+          pred <- pred_mod$fit
+          se <- pred_mod$se.fit
+
+          results <- model.frame(model) %>%
+            mutate(Value = pred,
+                  SE = se,
+                  Trat = unique(sumTray$Tray),
+                  Status = "Predicted",
+                  Residual = res,
+                  Iso = iso,
+                  DPI = dpi)
+          return(results)
+          print("Model 2.1")
       } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
         model <- lm(Pheno ~ Tray + Sample, # nolint: line_length_linter.
                     data = df_high_var,
@@ -175,7 +196,7 @@ results <- map_dfr(jobs, ~{
                  Iso = iso,
                  DPI = dpi)
         return(results)
-        print("Model 2")
+        print("Model 2.2")
       } else if (nrow(sumDate) > 1 && nrow(sumTray) > 1) {
         model <- lmer(Pheno ~ Sample + (1 | Date/Tray), # nolint: line_length_linter.
                       data = df_high_var,

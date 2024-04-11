@@ -231,6 +231,27 @@ server <- function(input, output, clientData, session) { # nolint
                 select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
               return(results)
               print("Model 1")
+            } else if (nrow(sumDate) > 1 && nrow(sumTray) == 1) {
+              model <- lm(Pheno ~ Sample + Date, # nolint: line_length_linter.
+                          data = df_high_var,
+                          na.action = na.omit)
+
+                sum_mod <- summary(model)
+                res <- sum_mod$residuals
+                pred_mod <- predict(model, se.fit = TRUE)
+                pred <- pred_mod$fit
+                se <- pred_mod$se.fit
+
+                results <- model.frame(model) %>%
+                  mutate(Value = pred,
+                        SE = se,
+                        Trat = unique(sumTray$Tray),
+                        Status = "Predicted",
+                        Residual = res,
+                        Iso = iso,
+                        DPI = dpi)
+                return(results)
+                print("Model 2.1")
             } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
               model <- lm(Pheno ~ Tray + Sample, # nolint: line_length_linter.
                           data = df_high_var,
@@ -251,7 +272,7 @@ server <- function(input, output, clientData, session) { # nolint
                       Iso = iso,
                       DPI = dpi)
               return(results)
-              print("Model 2")
+              print("Model 2.2")
             } else if (nrow(sumDate) > 1 && nrow(sumTray) > 1) {
               model <- lmer(Pheno ~ Sample + (1 | Date/Tray), # nolint: line_length_linter.
                             data = df_high_var,

@@ -245,7 +245,7 @@ server <- function(input, output, clientData, session) { # nolint
                 results <- model.frame(model) %>%
                   mutate(Value = pred,
                         SE = se,
-                        Trat = unique(sumTray$Tray),
+                        Tray = unique(sumTray$Tray),
                         Status = "Predicted",
                         Residual = res,
                         Iso = iso,

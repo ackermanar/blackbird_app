@@ -530,6 +530,20 @@ server <- function(input, output, clientData, session) { # nolint
           maxDPI = max(DPI, na.rm = TRUE),
           totalDPI = n_distinct(DPI, na.rm = TRUE))
 
+      audpcTable <- audpcMod %>%
+        group_split(Sample, Iso) %>%
+        map_dfr(~{
+          dpis <- .x$DPI
+          values <- .x$Value
+
+          AUDPCRel <- audpc(values, dpis, type = "relative")
+          AUDPCAbs <- audpc(values, dpis, type = "absolute")
+          return(tibble(Sample = unique(.x$Sample),
+                 Iso = unique(.x$Iso),
+                 AUDPCRel = AUDPCRel,
+                 AUDPCAbs = AUDPCAbs))
+        })
+
       output$results <- renderDT({
         datatable(resultsSelect, selection = "multiple", options = list(pageLength = 50, lengthChange = TRUE))
       })
@@ -571,9 +585,13 @@ server <- function(input, output, clientData, session) { # nolint
             write.csv(audpcMod, file = paste0("mixed_model_2phase", Sys.Date(), ".csv"), sep =",")
             fs <- c(fs, paste0("mixed_model_2phase", Sys.Date(), ".csv"))
           }
-          if (any(input$filesForDownload %in% "audpcMod")) {
-            write.csv(results2, file = paste0("mixed_model_audpc", Sys.Date(), ".csv"), sep =",")
+          if (any(input$filesForDownload %in% "audpcMod1")) {
+            write.csv(results2, file = paste0("mixed_model_on_audpc", Sys.Date(), ".csv"), sep =",")
             fs <- c(fs, paste0("mixed_model_audpc", Sys.Date(), ".csv"))
+          }
+          if (any(input$filesForDownload %in% "audpcMod2")) {
+            write.csv(audpcTable, file = paste0("audpc_from_mixed_model", Sys.Date(), ".csv"), sep =",")
+            fs <- c(fs, paste0("audpc_mixed_model", Sys.Date(), ".csv"))
           }
           zip(zipfile=fname, files=fs)
         },
@@ -583,4 +601,3 @@ server <- function(input, output, clientData, session) { # nolint
   }) %>%
     bindEvent(input$calculate)
 }
-

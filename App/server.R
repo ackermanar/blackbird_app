@@ -468,21 +468,21 @@ server <- function(input, output, clientData, session) { # nolint
             }
 
           results <- .x %>%
-              left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
-              left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
-              select(all_of(c("Sample", "Date", "Tray", "Iso",
-                              "absoluteAUDPC", "predAbsoluteAUDPC", "absoluteAUDPC_Status", "absoluteAUDPC_Residual", "absoluteAUDPC_SE",
-                              "relativeAUDPC", "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE", "relativeAUDPC_Residual")))  %>%
-              arrange(Sample, Date, Tray, Iso)
+            left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
+            left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
+            select(all_of(c("Sample", "Date", "Tray", "Iso",
+                            "absoluteAUDPC", "predAbsoluteAUDPC", "absoluteAUDPC_Status", "absoluteAUDPC_Residual", "absoluteAUDPC_SE",
+                            "relativeAUDPC", "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE", "relativeAUDPC_Residual")))  %>%
+            arrange(Sample, Date, Tray, Iso)
             return(results)
           }
         })
 
       if (length(unique(results1$Iso)) == 1) {
-      model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
-                  data = results1,
-                  REML = TRUE,
-                  na.action = na.omit)
+        model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
+                    data = results1,
+                    REML = TRUE,
+                    na.action = na.omit)
       } else {
         model <- lmer(Pheno ~ Iso + (1 | Sample/DPI), # nolint: line_length_linter.
                       data = results1,
@@ -497,22 +497,22 @@ server <- function(input, output, clientData, session) { # nolint
       audpcMod <- model@frame %>%
         mutate(Value = pred, SE = se) %>%
         mutate(Value = if_else(Value < 0, 0, Value)) %>%
-        select(!Pheno) %>%
-        distinct()
+        select(!Pheno)
 
       if(!any(colnames(audpcMod) == "Iso")) {
         audpcMod <- audpcMod %>%
-        mutate(Iso = unique(results1$Iso), .after = "Sample") 
+        mutate(Iso = unique(results1$Iso), .after = "Sample")
       }
       
       audpcMod <- audpcMod %>%
+        distinct() %>%
         select(Sample, Iso, DPI, Value, SE)
 
       resultsSelect <- audpcMod %>%
         group_by(Sample, Iso) %>%
         summarise(minDPI = min(DPI, na.rm = TRUE),
-        maxDPI = max(DPI, na.rm = TRUE),
-        totalDPI = n_distinct(DPI, na.rm = TRUE))
+          maxDPI = max(DPI, na.rm = TRUE),
+          totalDPI = n_distinct(DPI, na.rm = TRUE))
 
       output$results <- renderDT({
         datatable(resultsSelect, selection = "multiple", options = list(pageLength = 50, lengthChange = TRUE))

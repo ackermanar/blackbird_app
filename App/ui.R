@@ -75,7 +75,8 @@ ui <- dashboardPage(
                 h3("Running mixed model analysis on:")
               ),
               textOutput("text2"),
-              DTOutput("results")
+              DTOutput("results"),
+              h3("Click up to ten rows to visualize in the AUDPC visualizer tab.")
             )
           )
         )

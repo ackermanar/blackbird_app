@@ -203,7 +203,7 @@ server <- function(input, output, clientData, session) { # nolint
               summarise(n())
 
             sumTray <- df_high_var %>%
-              group_by(Tray) %>%
+              group_by(Date, Tray) %>%
               summarise(n())
 
             if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
@@ -231,29 +231,8 @@ server <- function(input, output, clientData, session) { # nolint
                 select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
               return(results)
               print("Model 1")
-            } else if (nrow(sumDate) > 1 && nrow(sumTray) == 1) {
-              model <- lm(Pheno ~ Sample + Date, # nolint: line_length_linter.
-                          data = df_high_var,
-                          na.action = na.omit)
-
-                sum_mod <- summary(model)
-                res <- sum_mod$residuals
-                pred_mod <- predict(model, se.fit = TRUE)
-                pred <- pred_mod$fit
-                se <- pred_mod$se.fit
-
-                results <- model.frame(model) %>%
-                  mutate(Value = pred,
-                        SE = se,
-                        Tray = unique(sumTray$Tray),
-                        Status = "Predicted",
-                        Residual = res,
-                        Iso = iso,
-                        DPI = dpi)
-                return(results)
-                print("Model 2.1")
             } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-              model <- lm(Pheno ~ Tray + Sample, # nolint: line_length_linter.
+              model <- lm(Pheno ~ Sample + Tray, # nolint: line_length_linter.
                           data = df_high_var,
                           na.action = na.omit)
 
@@ -288,10 +267,26 @@ server <- function(input, output, clientData, session) { # nolint
               if (hasConverged(model) == 1) {
                 print(paste(dpi, iso, "has converged succesfully!"))
               } else {
-                model <- lm(Pheno ~ Sample + Date + Tray, # nolint: line_length_linter.
+                model <- lm(Pheno ~ Sample + Date, # nolint: line_length_linter.
                             data = df_high_var,
                             na.action = na.omit)
+
+                sum_mod <- summary(model)
+                res <- sum_mod$residuals
+                pred_mod <- predict(model, se.fit = TRUE)
+                pred <- pred_mod$fit
+                se <- pred_mod$se.fit
+
+                results <- model.frame(model) %>%
+                mutate(Value = pred,
+                      SE = se,
+                      Tray = "1",
+                      Status = "Predicted",
+                      Residual = res,
+                      Iso = iso,
+                      DPI = dpi)
                 print(paste(dpi, iso, "converged as lm."))
+                return(results)
               }
               sum_mod <- summary(model)
               res <- sum_mod$residuals

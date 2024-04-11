@@ -77,7 +77,7 @@ ui <- dashboardPage(
               textOutput("text2"),
               conditionalPanel(
                 condition = "input.calculate > 0",
-                h3("Select up to ten rows to visualize in the AUDPC visualizer tab."),
+                h4("Select up to ten rows to visualize in the AUDPC visualizer tab."),
               ),
               br(),
               DTOutput("results")

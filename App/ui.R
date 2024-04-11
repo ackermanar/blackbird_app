@@ -75,7 +75,10 @@ ui <- dashboardPage(
                 h3("Running mixed model analysis on:")
               ),
               textOutput("text2"),
-              h3("Click up to ten rows to visualize in the AUDPC visualizer tab."),
+              conditionalPanel(
+                condition = "input.calculate > 0",
+                h3("Select up to ten rows to visualize in the AUDPC visualizer tab."),
+              ),
               br(),
               DTOutput("results")
             )

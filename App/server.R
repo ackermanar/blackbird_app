@@ -374,7 +374,7 @@ server <- function(input, output, clientData, session) { # nolint
             summarise(n())
 
           sumTray <- .x %>%
-            group_by(Tray) %>%
+            group_by(Date, Tray) %>%
             summarise(n())
 
           sumSample <- .x %>%
@@ -385,11 +385,6 @@ server <- function(input, output, clientData, session) { # nolint
             return(.x)
           } else if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
             model <- lmer(absoluteAUDPC ~ (1 | Sample), # nolint: line_length_linter.
-                          data = .x,
-                          REML = TRUE,
-                          na.action = na.omit)
-          } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-            model <- lmer(absoluteAUDPC ~ Tray + (1 | Sample), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
@@ -414,6 +409,7 @@ server <- function(input, output, clientData, session) { # nolint
             res <- sum_mod$residuals
             pred_mod <- predict(model, se.fit = TRUE)
             pred <- pred_mod$fit
+            pred[pred < 0] <- 0
             se <- pred_mod$se.fit
 
             resultsAbsolute <- model@frame %>%
@@ -438,16 +434,11 @@ server <- function(input, output, clientData, session) { # nolint
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
-          } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-            model <- lmer(relativeAUDPC~ Tray + (1 | Sample), # nolint: line_length_linter.
+          } else if (nrow(sumDate) > 1) {
+            model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
-          } else if (nrow(sumDate) > 1) {
-            model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
-                    data = .x,
-                    REML = TRUE,
-                    na.action = na.omit)
             if (hasConverged(model) != 1) {
               model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date:Tray), # nolint: line_length_linter.
                             data = .x,
@@ -466,7 +457,7 @@ server <- function(input, output, clientData, session) { # nolint
             sum_mod <- summary(model)
             res <- sum_mod$residuals
             pred_mod <- predict(model, se.fit = TRUE)
-            pred <- pred_mod$fit
+            pred[pred < 0] <- 0
             se <- pred_mod$se.fit
 
             resultsRelative <- model@frame %>%
@@ -483,17 +474,17 @@ server <- function(input, output, clientData, session) { # nolint
                 mutate(Tray = unique(sumTray$Tray))
             }
 
-          results <- .x %>%
-            left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
-            left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
-            select(all_of(c("Sample", "Date", "Tray", "Iso",
-                            "absoluteAUDPC", "predAbsoluteAUDPC", "absoluteAUDPC_Status", "absoluteAUDPC_Residual", "absoluteAUDPC_SE",
-                            "relativeAUDPC", "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE", "relativeAUDPC_Residual")))  %>%
-            arrange(Sample, Date, Tray, Iso)
-            return(results)
+            results <- .x %>%
+              left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
+              left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
+              select(all_of(c("Sample", "Date", "Tray", "Iso",
+                              "predAbsoluteAUDPC", "absoluteAUDPC_Status",  "absoluteAUDPC_SE",
+                              "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE")))  %>%
+              distinct() %>%
+              arrange(Sample, Iso)
+              return(results)
           }
         })
-
       if (length(unique(results1$Iso)) == 1) {
         model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
                     data = results1,

@@ -27,8 +27,8 @@ hasConverged <- function (mm) {
   return(retval)
 }
 
-jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 3/06_15_2023_T3_21007_Results_Validated.xlsx")
+jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx")
 
 results <- map_dfr(jobs, ~{
   meta <- str_remove(basename(.x), "_Results*") %>%
@@ -85,7 +85,7 @@ results <- map_dfr(jobs, ~{
       summarise(n())
 
     sumTray <- .x %>%
-      group_by(Tray) %>%
+      group_by(Date, Tray) %>%
       summarise(n())
 
     sumSample <- .x %>%
@@ -96,11 +96,6 @@ results <- map_dfr(jobs, ~{
       return(.x)
     } else if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
       model <- lmer(absoluteAUDPC ~ (1 | Sample), # nolint: line_length_linter.
-                    data = .x,
-                    REML = TRUE,
-                    na.action = na.omit)
-    } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-      model <- lmer(absoluteAUDPC ~ Tray + (1 | Sample), # nolint: line_length_linter.
                     data = .x,
                     REML = TRUE,
                     na.action = na.omit)
@@ -125,6 +120,7 @@ results <- map_dfr(jobs, ~{
       res <- sum_mod$residuals
       pred_mod <- predict(model, se.fit = TRUE)
       pred <- pred_mod$fit
+      pred[pred < 0] <- 0
       se <- pred_mod$se.fit
 
       resultsAbsolute <- model@frame %>%
@@ -149,16 +145,11 @@ results <- map_dfr(jobs, ~{
                     data = .x,
                     REML = TRUE,
                     na.action = na.omit)
-    } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-      model <- lmer(relativeAUDPC~ Tray + (1 | Sample), # nolint: line_length_linter.
+    } else if (nrow(sumDate) > 1) {
+      model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
                     data = .x,
                     REML = TRUE,
                     na.action = na.omit)
-    } else if (nrow(sumDate) > 1) {
-      model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
-              data = .x,
-              REML = TRUE,
-              na.action = na.omit)
       if (hasConverged(model) != 1) {
         model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date:Tray), # nolint: line_length_linter.
                       data = .x,
@@ -177,7 +168,7 @@ results <- map_dfr(jobs, ~{
       sum_mod <- summary(model)
       res <- sum_mod$residuals
       pred_mod <- predict(model, se.fit = TRUE)
-      pred <- pred_mod$fit
+      pred[pred < 0] <- 0
       se <- pred_mod$se.fit
 
       resultsRelative <- model@frame %>%
@@ -194,13 +185,14 @@ results <- map_dfr(jobs, ~{
           mutate(Tray = unique(sumTray$Tray))
       }
 
-    results <- .x %>%
+      results <- .x %>%
         left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
         left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
         select(all_of(c("Sample", "Date", "Tray", "Iso",
-                        "absoluteAUDPC", "predAbsoluteAUDPC", "absoluteAUDPC_Status", "absoluteAUDPC_Residual", "absoluteAUDPC_SE",
-                        "relativeAUDPC", "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE", "relativeAUDPC_Residual")))  %>%
-        arrange(Sample, Date, Tray, Iso)
-      return(results)
+                        "predAbsoluteAUDPC", "absoluteAUDPC_Status",  "absoluteAUDPC_SE",
+                        "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE")))  %>%
+        distinct() %>%
+        arrange(Sample, Iso)
+        return(results)
     }
   })

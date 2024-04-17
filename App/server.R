@@ -531,7 +531,7 @@ server <- function(input, output, clientData, session) { # nolint
       audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%
         distinct()
       
-      audpc_table <- audpcMod %>%
+      audpcTable <- audpcMod %>%
         group_split(Sample, Iso) %>%
         map_dfr(~{
           dpis <- .x$DPI

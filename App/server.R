@@ -530,6 +530,20 @@ server <- function(input, output, clientData, session) { # nolint
 
       audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%
         distinct()
+      
+      audpc_table <- audpcMod %>%
+        group_split(Sample, Iso) %>%
+        map_dfr(~{
+          dpis <- .x$DPI
+          values <- .x$Value
+
+        AUDPCRel <- audpc(values, dpis, type = "relative")
+        AUDPCAbs <- audpc(values, dpis, type = "absolute")
+        return(tibble(Sample = unique(.x$Sample),
+                Iso = unique(.x$Iso),
+                AUDPCRel = AUDPCRel,
+                AUDPCAbs = AUDPCAbs))
+      })
 
       resultsSelect <- audpcMod %>%
         group_by(Sample, Iso) %>%

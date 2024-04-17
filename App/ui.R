@@ -112,7 +112,7 @@ ui <- dashboardPage(
         p("Mixed model 1phase:  includes a prediction for every individual dpi per sample/iso/test/date combination."),
         p("Mixed model 2phase: includes a prediction for every individual dpi per sample/iso combination, this will be the most accurate prediction model, but with less data than 1phase."),
         p("Mixed model on AUPDC: First performs AUDPC for each individual sample across all dpi dates avaiable for the correspaning sample, then performas a mixed model on all available AUDPC for a giving variety/genotype. Due to higher standard error across sample values than AUDPC per sample, this may be a desirable solution."),
-        p("AUDPC from mixed model: This is the AUDPC value calculated from the mixed model results titled 'Mixed Model 2phase'.")
+        p("AUDPC from mixed model: This is the AUDPC value calculated from the mixed model results titled Mixed Model 2phase.")
       )
     )
   )

@@ -43,6 +43,8 @@ hasConverged <- function (mm) {
   return(retval)
 }
 
+safe_audpc <- purrr::safely(audpc)
+
 server <- function(input, output, clientData, session) { # nolint
 
   # Select and view the image

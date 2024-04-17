@@ -552,7 +552,8 @@ server <- function(input, output, clientData, session) { # nolint
               geom_line() +
               geom_point() +
               geom_area(aes(fill = Sample), alpha = 0.2) +
-              geom_errorbar(aes(ymin = Value - SE, ymax = Value + SE), width = 0.4)
+              geom_errorbar(aes(ymin = Value - SE, ymax = Value + SE), width = 0.4) +
+              coord_cartesian(ylim = c(0, NA))
 
         if(input$rotate == FALSE) {
           audpcPlot + facet_grid(Iso ~ Sample) +

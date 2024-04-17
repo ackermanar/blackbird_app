@@ -283,7 +283,7 @@ Sample <- "AB"
 Iso <- "21007"
 
 resultsAUDPC <- audpcMod %>%
-  filter(Sample %in% c("AB", "AR", "ASCS", "Abacus"), Iso %in% c("21007", "22031"))
+  filter(Sample %in% c("X59_Sproule", "TJs_CBD"), Iso %in% c("21007", "22031"))
 
 # Create the line plot
 linePlot <- ggplot(resultsAUDPC, aes(x = DPI, y = Value, color = Sample)) +
@@ -292,7 +292,7 @@ linePlot <- ggplot(resultsAUDPC, aes(x = DPI, y = Value, color = Sample)) +
   geom_area(aes(fill = Sample), alpha = 0.2) +
   geom_errorbar(aes(ymin = Value - SE, ymax = Value + SE), width = 0.4) +
   facet_grid(Iso ~ Sample) +
-  scale_x_continuous(breaks = seq(floor(min(df$DPI)), ceiling(max(df$DPI)), by = 1))
+  coord_cartesian(ylim = c(0, NA))
 plot(linePlot)
 
 audpc_table <- audpcMod %>%

@@ -27,8 +27,11 @@ hasConverged <- function (mm) {
   return(retval)
 }
 
-jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_12_2023_T1_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/21007/Rep 2/06_14_2023_T1_21007_Results_Validated.xlsx",
+safe_audpc <- purrr::safely(audpc)
+
+jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_14_2023_T1_21007_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_14_2023_T2_22031_Results_Validated.xlsx",
+             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_15_2023_T1_21007_Results_Validated.xlsx",
              "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_15_2023_T2_22031_Results_Validated.xlsx")
 
 results <- map_dfr(jobs, ~{
@@ -75,8 +78,9 @@ results <- map_dfr(jobs, ~{
   mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
   na.omit(Pheno) %>%
   group_by(Sample, Rep, Date, Iso, Tray) %>%
-  summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
-  ungroup() %>%
+  reframe(absoluteAUDPC = safe_audpc(Pheno, DPI, "absolute"), relativeAUDPC = safe_audpc(Pheno, DPI, "relative")) %>%
+  unnest(cols = c(absoluteAUDPC, relativeAUDPC)) %>%
+  filter(reduce(across(everything(), ~.x != ""), `&`)) %>%
   group_split(Iso) %>%
   map_dfr(~{
     model <- NULL
@@ -170,6 +174,7 @@ results <- map_dfr(jobs, ~{
       sum_mod <- summary(model)
       res <- sum_mod$residuals
       pred_mod <- predict(model, se.fit = TRUE)
+      pred <- pred_mod$fit
       pred[pred < 0] <- 0
       se <- pred_mod$se.fit
 

@@ -525,7 +525,7 @@ server <- function(input, output, clientData, session) { # nolint
 
       if (!any(colnames(audpcMod) == "Iso")) {
         audpcMod <- audpcMod %>%
-          mutate(Iso = unique(results$Iso), .after = "Sample") 
+          mutate(Iso = unique(results1$Iso), .after = "Sample") 
       }
 
       audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%

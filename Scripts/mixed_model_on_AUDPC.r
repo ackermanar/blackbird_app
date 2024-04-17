@@ -29,10 +29,7 @@ hasConverged <- function (mm) {
 
 safe_audpc <- purrr::safely(audpc)
 
-jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_14_2023_T1_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_14_2023_T2_22031_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_15_2023_T1_21007_Results_Validated.xlsx",
-             "/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_15_2023_T2_22031_Results_Validated.xlsx")
+jobs <- list("/Users/aja294-admin/Hemp/Blackbird/data/USDA 2023 Results Validated Severity Files/Validated Results Data Sheets/06_12_2023_T1_21007_Results_Validated.xlsx")
 
 results <- map_dfr(jobs, ~{
   meta <- str_remove(basename(.x), "_Results*") %>%

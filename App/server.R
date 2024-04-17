@@ -501,6 +501,42 @@ server <- function(input, output, clientData, session) { # nolint
               return(results)
           }
         })
+
+      if (length(unique(results1$Iso)) == 1) {
+        model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
+                    data = results1,
+                    REML = TRUE,
+                    na.action = na.omit)
+      } else {
+        model <- lmer(Pheno ~ Iso + (1 | Sample/DPI), # nolint: line_length_linter.
+                      data = results1,
+                      REML = TRUE,
+                      na.action = na.omit)
+      }
+
+      pred_mod <- predict(model, se.fit = TRUE)
+      pred <- pred_mod$fit
+      se <- pred_mod$se.fit
+
+      audpcMod <- model@frame %>%
+        mutate(Value = pred, SE = se) %>%
+        mutate(Value = if_else(Value < 0, 0, Value)) %>%
+        select(!Pheno)
+
+      if (!any(colnames(audpcMod) == "Iso")) {
+        audpcMod <- audpcMod %>%
+          mutate(Iso = unique(results$Iso), .after = "Sample") 
+      }
+
+      audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%
+        distinct()
+
+      resultsSelect <- audpcMod %>%
+        group_by(Sample, Iso) %>%
+        summarise(minDPI = min(DPI, na.rm = TRUE),
+          maxDPI = max(DPI, na.rm = TRUE),
+          totalDPI = n_distinct(DPI, na.rm = TRUE))
+
       output$results <- renderDT({
         datatable(resultsSelect, selection = "multiple", options = list(pageLength = 50, lengthChange = TRUE))
       })

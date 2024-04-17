@@ -77,10 +77,20 @@ results <- map_dfr(jobs, ~{
   pivot_longer(cols = -c(Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
   mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
   na.omit(Pheno) %>%
-  group_by(Sample, Rep, Date, Iso, Tray) %>%
-  reframe(absoluteAUDPC = safe_audpc(Pheno, DPI, "absolute"), relativeAUDPC = safe_audpc(Pheno, DPI, "relative")) %>%
-  unnest(cols = c(absoluteAUDPC, relativeAUDPC)) %>%
   filter(reduce(across(everything(), ~.x != ""), `&`)) %>%
+  group_split(Sample, Rep, Date, Iso, Tray) %>%
+  map_dfr(~{
+    Pheno <- .x$Pheno
+    DPI <- .x$DPI
+    absoluteAUDPC <- safe_audpc(Pheno, DPI, "absolute")
+    relativeAUDPC <- safe_audpc(Pheno, DPI, "relative")
+    if(is.null(absoluteAUDPC[[1]]) || is.null(relativeAUDPC[[1]])){
+      absoluteAUDPC[[1]] <- NA
+      relativeAUDPC[[1]] <- NA
+    }
+    df <- .x %>%
+      mutate(absoluteAUDPC = absoluteAUDPC[[1]], relativeAUDPC = relativeAUDPC[[1]])
+  }) %>%
   group_split(Iso) %>%
   map_dfr(~{
     model <- NULL

@@ -2,7 +2,9 @@ install_if_missing <- function(packages) {
   new_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
   if (length(new_packages)) install.packages(new_packages)
 }
-required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "DT", "openxlsx", "tidyverse")
+
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "agricolae", "DT", "openxlsx", "lme4", "Matrix", "purrr", "tidyverse")
 install_if_missing(required_packages)
 
 library(shiny)
@@ -16,6 +18,11 @@ library(lme4)
 library(Matrix)
 library(purrr)
 library(tidyverse)
+
+outdated_packages <- old.packages()
+if (!is.null(outdated_packages)) {
+  update.packages(oldPkgs = row.names(outdated_packages), ask = FALSE)
+}
 
 get_root_dir <- function() {
   if (.Platform$OS.type == "unix") {

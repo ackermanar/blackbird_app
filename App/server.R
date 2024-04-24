@@ -594,20 +594,20 @@ server <- function(input, output, clientData, session) { # nolint
 
           fs <- c()
           if (any(input$filesForDownload %in% "1phase")) {
-            write.csv(results1, file = paste0("mixed_model_1phase", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("mixed_model_1phase", Sys.Date(), ".csv"))
+            write.xlsx(results1, file = paste0("mixed_model_1phase", Sys.Date(), ".xlsx"), sep =",")
+            fs <- c(fs, paste0("mixed_model_1phase", Sys.Date(), ".xlsx"))
           }
           if (any(input$filesForDownload %in% "2phase")) {
-            write.csv(audpcMod, file = paste0("mixed_model_2phase", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("mixed_model_2phase", Sys.Date(), ".csv"))
+            write.xlsx(audpcMod, file = paste0("mixed_model_2phase", Sys.Date(), ".xlsx"), sep =",")
+            fs <- c(fs, paste0("mixed_model_2phase", Sys.Date(), ".xlsx"))
           }
           if (any(input$filesForDownload %in% "audpcMod1")) {
-            write.csv(results2, file = paste0("mixed_model_on_audpc", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("mixed_model_on_audpc", Sys.Date(), ".csv"))
+            write.xlsx(results2, file = paste0("mixed_model_on_audpc", Sys.Date(), ".xlsx"), sep =",")
+            fs <- c(fs, paste0("mixed_model_on_audpc", Sys.Date(), ".xlsx"))
           }
           if (any(input$filesForDownload %in% "audpcMod2")) {
-            write.csv(audpcTable, file = paste0("audpc_from_mixed_model", Sys.Date(), ".csv"), sep =",")
-            fs <- c(fs, paste0("audpc_from_mixed_model", Sys.Date(), ".csv"))
+            write.xlsx(audpcTable, file = paste0("audpc_from_mixed_model", Sys.Date(), ".xlsx"), sep =",")
+            fs <- c(fs, paste0("audpc_from_mixed_model", Sys.Date(), ".xlsx"))
           }
           zip(zipfile=fname, files=fs)
         },

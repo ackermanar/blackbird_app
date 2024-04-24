@@ -2,6 +2,8 @@ install_if_missing <- function(packages) {
   new_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
   if (length(new_packages)) install.packages(new_packages)
 }
+
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
 required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "agricolae", "DT", "openxlsx", "lme4", "Matrix", "purrr", "tidyverse")
 install_if_missing(required_packages)
 

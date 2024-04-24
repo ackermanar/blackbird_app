@@ -4,13 +4,14 @@ install_if_missing <- function(packages) {
 }
 
 options(repos = c(CRAN = "https://cloud.r-project.org/"))
-required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "agricolae", "DT", "openxlsx", "lme4", "Matrix", "purrr", "tidyverse")
+required_packages <- c("shiny", "shinydashboard", "shinyFiles", "shinyjs", "htmltools", "agricolae", "DT", "openxlsx", "lme4", "Matrix", "purrr", "tidyverse")
 install_if_missing(required_packages)
 
 library(shiny)
 library(shinydashboard)
 library(shinyFiles)
 library(shinyjs)
+library(htmltools)
 library(agricolae)
 library(DT)
 library(openxlsx)

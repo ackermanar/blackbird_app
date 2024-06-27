@@ -56,7 +56,7 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "upload",
         h3("Select the directory that contains the corresponding set of images."), # nolint: line_length_linter.
-        p('e.g. "2020-11-17_15-00-00"'),
+        p('e.g. "2024 Blackbird Images" for updated pathfinder or "2020-11-17_15-00-00" for the older version'),
         shinyDirButton("folder", "Select the image folder",
                        "Please select image folder", multiple = FALSE),
         textOutput("pathReadout"),

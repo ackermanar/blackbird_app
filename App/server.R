@@ -54,7 +54,13 @@ hasConverged <- function (mm) {
 safe_audpc <- purrr::safely(audpc)
 
 server <- function(input, output, clientData, session) { # nolint
-
+  get_root_dir <- function() {
+    if (.Platform$OS.type == "unix") {
+      return(normalizePath("~"))
+    } else {
+      return(normalizePath("C:/"))
+    }
+  }
   # Select and view the image
   shinyDirChoose(input, "folder", roots = c("home" = get_root_dir()), session = session, filetypes = NULL)
   observe({
@@ -62,41 +68,91 @@ server <- function(input, output, clientData, session) { # nolint
     folder <- input$folder
     req(file)
     req(folder)
-    df <- read.xlsx(xlsxFile = file$datapath, colNames = TRUE, rowNames = TRUE,
-                    detectDates = TRUE, skipEmptyRows = TRUE, na.strings = "N/A") # nolint: line_length_linter.
 
-    # Find the directory path
-    dir_path <- parseDirPath(c("home" = get_root_dir()), folder)
 
-    # Find string that starts with "T" followed by a number
-    tray <- sub(".*T(\\d+).*", "\\1", parseDirPath(c("home" = "~"), folder)) # nolint: line_length_linter.
+    if (input$search == TRUE) {
+      fileSep <- .Platform$file.sep
+      df <- read.xlsx(xlsxFile = file$datapath,
+                      colNames = TRUE,
+                      rowNames = TRUE,
+                      detectDates = TRUE,
+                      skipEmptyRows = TRUE,
+                      na.strings = "N/A") # nolint: line_length_linter.
 
-    # Render tbl
-    output$tbl <- renderDT(df, server = TRUE,
-                           selection = list(mode = "single", target = "cell"))
+      # Render tbl
+      output$tbl <- renderDT(df, server = TRUE,
+                             selection = list(mode = "single", target = "cell"))
 
-    output$text <- renderPrint({
-      validate(
-        need(sub(" Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
-      )
-      paste(
-        dir_path, # nolint: line_length_linter.
-        colnames(df)[input$tbl_cell_clicked$col],
-        tray,
-        paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
-        sep = .Platform$file.sep)
-    })
+      dirPath <- str_c(parseDirPath(c("home" = get_root_dir()), folder), str_remove(basename(file$name), "_Results.*|\\..*$"), sep = fileSep)
+      output$pathReadout <- renderText({
+        str_c("Searching image folder on path:", dirPath)
+      })
 
-    # Render image
-    output$image <- renderImage({
-      width  <- clientData$output_image_width
-      height <- (clientData$output_image_height)
-      list(src = paste(dir_path,
-                       colnames(df)[input$tbl_cell_clicked$col],
-                       tray,
-                       paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
-                       sep = .Platform$file.sep), contentType = "image/png", width = width, height = height) # nolint: line_length_linter.
-    }, deleteFile = FALSE)
+      output$text <- renderPrint({
+        str_c(list.files(dirPath,
+                         str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
+                         full.names = TRUE),
+              "1",
+              str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
+              sep = fileSep)
+      })
+
+      output$imageName <- renderText({
+        str_c("Image: ", str_c(rownames(df)[input$tbl_cell_clicked$row], " on ", colnames(df)[input$tbl_cell_clicked$col]))
+      })
+
+      # Render image
+      output$image <- renderImage({
+        width  <- clientData$output_image_width
+        height <- clientData$output_image_height
+        list(src = str_c(list.files(dirPath,
+                                    str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
+                                    full.names = TRUE),
+                         "1",
+                         str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
+                         sep = fileSep),
+            contentType = "image/png",
+            width = width,
+            height = height)},
+            deleteFile = FALSE)
+
+    } else if (input$search == FALSE) {
+       df <- read.xlsx(xlsxFile = file$datapath, colNames = TRUE, rowNames = TRUE,
+       detectDates = TRUE, skipEmptyRows = TRUE, na.strings = "N/A") # nolint: line_length_linter.
+
+      # Find the directory path
+      dir_path <- parseDirPath(c("home" = get_root_dir()), folder)
+      # Find string that starts with "T" followed by a number
+      tray <- sub(".*T(\\d+).*", "\\1", parseDirPath(c("home" = "~"), folder)) # nolint: line_length_linter.
+
+      # Render tbl
+      output$tbl <- renderDT(df, server = TRUE,
+                             selection = list(mode = "single", target = "cell"))
+
+      output$text <- renderPrint({
+        validate(
+          need(sub(" Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
+        )
+        paste(
+          dir_path, # nolint: line_length_linter.
+          colnames(df)[input$tbl_cell_clicked$col],
+          tray,
+          paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
+          sep = .Platform$file.sep)
+
+              # Render image
+      output$image <- renderImage({
+        width  <- clientData$output_image_width
+        height <- clientData$output_image_height
+        list(src = paste(dir_path,
+                        colnames(df)[input$tbl_cell_clicked$col],
+                        tray,
+                        paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
+                        sep = .Platform$file.sep), contentType = "image/png", width = width, height = height) # nolint: line_length_linter.
+      }, deleteFile = FALSE)
+      })
+    }
+
   }) %>%
     bindEvent(c(input$file, input$folder))
 
@@ -120,46 +176,28 @@ server <- function(input, output, clientData, session) { # nolint
 
       # audpuc from mixed model
       results1 <- map2_dfr(names, jobs, ~{
-        meta <- str_remove(basename(.x), "_Results*") %>%
-          strsplit("_T")
+        meta <- str_remove(basename(.x), " Results.xlsx") %>%
+        strsplit("_T")
         date <- meta[[1]][1]
-        TrayIso <- strsplit(meta[[1]][2], "_")
-        tray <- TrayIso[[1]][1]
-        iso <- TrayIso[[1]][2]
+        testIso <- strsplit(meta[[1]][2], "_")
+        test <- testIso[[1]][1]
+        iso <- testIso[[1]][2]
 
         df <- read.xlsx(xlsxFile = .y,
                         colNames = TRUE,
                         rowNames = FALSE,
                         detectDates = TRUE,
                         skipEmptyRows = TRUE,
-                        na.strings = c("N/A", "NA")) %>%
-          select(-any_of("Notes")) %>%
-          filter(str_detect(Sample, "_")) %>%
-          mutate(Date = date, Tray = tray, Iso = iso) %>%
-          separate(Sample, c("ID", "Sample"),
-                  sep = "-",
-                  extra = "merge",
-                  fill = "right") %>%
-          mutate(Sample = str_replace(Sample, "(.*)_", "\\1-")) %>%
-          separate(Sample, c("Sample", "Iso"),
-                  sep = "-") %>%
-          mutate(Sample = str_replace(Sample, "(.*)_", "\\1-")) %>%
-          separate(Sample, c("Sample", "Rep"),
-                  sep = "-")
+                        na.strings = "N/A") %>%
+          mutate(Date = date, Test = test, Iso = iso)
 
-        if (any(str_detect(colnames(df), "_"))) {
-          colnames(df) <- str_remove(colnames(df), ".*_")
-        }
+        df$Sample <- str_remove_all(df$Sample, "[\\-_0-9]")
 
-        if (any(str_detect(colnames(df), "dpi"))) {
-          colnames(df) <- str_remove(colnames(df), "dpi")
-        }
-
+        colnames(df) <- str_remove(colnames(df), ".*_")
         return(df)
       }) %>%
-        select(-ID, -Rep) %>%
-        select(Sample, Date, Tray, Iso, everything()) %>%
-        pivot_longer(cols = -c("Sample", "Date", "Tray", "Iso"), names_to = "DPI", values_to = "Pheno") %>%
+        select(Sample, Date, Test, Iso, everything()) %>%
+        pivot_longer(cols = -c("Sample", "Date", "Test", "Iso"), names_to = "DPI", values_to = "Pheno") %>%
         mutate(DPI = str_remove_all(DPI, "dpi")) %>%
         mutate(DPI = as.numeric(DPI)) %>%
         na.omit(Pheno) %>%
@@ -171,12 +209,12 @@ server <- function(input, output, clientData, session) { # nolint
           model <- NULL
 
           zero_counts <- .x %>%
-            group_by(Sample, Date, Tray) %>%
+            group_by(Sample, Date, Test) %>%
             summarise(zero_count = sum(Pheno == 0, na.rm = TRUE) / n()) %>%
             mutate(varianceThreshold = zero_count <= 0.25) %>%
             select(-zero_count)
 
-          df <- .x %>% left_join(zero_counts, by = c("Sample","Date", "Tray"), relationship = "many-to-many") %>%
+          df <- .x %>% left_join(zero_counts, by = c("Sample","Date", "Test"), relationship = "many-to-many") %>%
             group_by(Sample, Date) %>%
             mutate(SE = sd(Pheno, na.rm = TRUE) / length(na.omit(Pheno))) %>%
             ungroup()
@@ -196,14 +234,14 @@ server <- function(input, output, clientData, session) { # nolint
           if (nrow(df_high_var) == 0) {
 
             results <- df_low_var %>%
-              select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE) %>%
+              select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE) %>%
               arrange(desc(Sample), desc(Iso), Date)
 
           } else if (nrow(sumSample) < 5) {
 
             results <- df_high_var %>%
               mutate(Value = 0, Status = "Low Sample Count, Zeroed", Iso = iso, DPI = dpi, Residual = NA) %>%
-              select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE) %>%
+              select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE) %>%
               rbind(df_low_var) %>%
               arrange(desc(Sample), desc(Iso), Date)
 
@@ -213,11 +251,11 @@ server <- function(input, output, clientData, session) { # nolint
               group_by(Date) %>%
               summarise(n())
 
-            sumTray <- df_high_var %>%
-              group_by(Date, Tray) %>%
+            sumTest <- df_high_var %>%
+              group_by(Test) %>%
               summarise(n())
 
-            if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
+            if (nrow(sumDate) == 1 && nrow(sumTest) == 1) {
               model <- lm(Pheno ~ Sample,
                           data = df_high_var,
                           na.action = na.omit)
@@ -232,18 +270,18 @@ server <- function(input, output, clientData, session) { # nolint
                 mutate(Value = pred,
                       SE = se,
                       Date = unique(sumDate$Date),
-                      Tray = unique(sumTray$Tray),
+                      Test = unique(sumTest$Test),
                       Status = "Predicted",
                       Residual = res,
                       Iso = iso,
                       DPI = dpi) %>%
                 rbind(df_low_var) %>%
                 arrange(desc(Sample), desc(Iso), Date) %>%
-                select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
+                select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE)
               return(results)
               print("Model 1")
-            } else if (nrow(sumDate) == 1 && nrow(sumTray) > 1) {
-              model <- lm(Pheno ~ Sample + Tray, # nolint: line_length_linter.
+            } else if (nrow(sumDate) == 1 && nrow(sumTest) > 1) {
+              model <- lm(Pheno ~ Test + Sample, # nolint: line_length_linter.
                           data = df_high_var,
                           na.action = na.omit)
 
@@ -262,15 +300,15 @@ server <- function(input, output, clientData, session) { # nolint
                       Iso = iso,
                       DPI = dpi)
               return(results)
-              print("Model 2.2")
-            } else if (nrow(sumDate) > 1 && nrow(sumTray) > 1) {
-              model <- lmer(Pheno ~ Sample + (1 | Date/Tray), # nolint: line_length_linter.
+              print("Model 2")
+            } else if (nrow(sumDate) > 1 && nrow(sumTest) > 1) {
+              model <- lmer(Pheno ~ Sample + (1 | Date/Test), # nolint: line_length_linter.
                             data = df_high_var,
                             REML = TRUE,
                             na.action = na.omit)
               if (hasConverged(model) != 1) {
                 print(paste(dpi, iso, "has not converged, retrying model."))
-                model <- lmer(Pheno ~ Sample + (1 | Date:Tray), # nolint: line_length_linter.
+                model <- lmer(Pheno ~ Sample + (1 | Date:Test), # nolint: line_length_linter.
                               data = df_high_var,
                               REML = TRUE,
                               na.action = na.omit)
@@ -278,26 +316,10 @@ server <- function(input, output, clientData, session) { # nolint
               if (hasConverged(model) == 1) {
                 print(paste(dpi, iso, "has converged succesfully!"))
               } else {
-                model <- lm(Pheno ~ Sample + Date, # nolint: line_length_linter.
+                model <- lm(Pheno ~ Sample + Date + Test, # nolint: line_length_linter.
                             data = df_high_var,
                             na.action = na.omit)
-
-                sum_mod <- summary(model)
-                res <- sum_mod$residuals
-                pred_mod <- predict(model, se.fit = TRUE)
-                pred <- pred_mod$fit
-                se <- pred_mod$se.fit
-
-                results <- model.frame(model) %>%
-                mutate(Value = pred,
-                      SE = se,
-                      Tray = "1",
-                      Status = "Predicted",
-                      Residual = res,
-                      Iso = iso,
-                      DPI = dpi)
                 print(paste(dpi, iso, "converged as lm."))
-                return(results)
               }
               sum_mod <- summary(model)
               res <- sum_mod$residuals
@@ -318,7 +340,7 @@ server <- function(input, output, clientData, session) { # nolint
                       DPI = dpi) %>%
                 rbind(df_low_var) %>%
                 arrange(desc(Sample), desc(Iso), Date) %>%
-                select(Sample, Date, Iso, Tray, DPI, Pheno, Value, Status, Residual, SE)
+                select(Sample, Date, Iso, Test, DPI, Pheno, Value, Status, Residual, SE)
               return(results)
               print("Model 3")
             } else if (is.null(model)) {
@@ -327,26 +349,24 @@ server <- function(input, output, clientData, session) { # nolint
               stop(paste("Mixed model failed to run on samples taken at", dpi, "please ensure there are enough samples to run mixed model analysis."))
             }
           }
-      })
-
+        })
       # Mixed model from audpc
       results2 <- map2_dfr(names, jobs, ~{
-        meta <- str_remove(basename(.x), "_Results*") %>%
-        strsplit("_T")
+        meta <- str_remove(basename(.x), " Results.xlsx") %>%
+          strsplit("_T")
         date <- meta[[1]][1]
-        TrayIso <- strsplit(meta[[1]][2], "_")
-        tray <- TrayIso[[1]][1]
-        iso <- TrayIso[[1]][2]
+        testIso <- strsplit(meta[[1]][2], "_")
+        test <- testIso[[1]][1]
+        iso <- testIso[[1]][2]
 
         df <- read.xlsx(xlsxFile = .y,
                         colNames = TRUE,
                         rowNames = FALSE,
                         detectDates = TRUE,
                         skipEmptyRows = TRUE,
-                        na.strings = c("N/A", "NA")) %>%
-                        select(-any_of("Notes")) %>%
-                        filter(str_detect(Sample, "_")) %>%
-          mutate(Date = date, Tray = tray, Iso = iso) %>%
+                        na.strings = "N/A") %>%
+          filter(str_detect(Sample, "_")) %>%
+          mutate(Date = date, Test = test, Iso = iso) %>%
           separate(Sample, c("ID", "Sample"),
                   sep = "-",
                   extra = "merge",
@@ -358,35 +378,19 @@ server <- function(input, output, clientData, session) { # nolint
           separate(Sample, c("Sample", "Rep"),
                   sep = "-")
 
-        if (any(str_detect(colnames(df), "_"))) {
-          colnames(df) <- str_remove(colnames(df), ".*_")
-        }
+        df$Sample <- str_remove_all(df$Sample, paste0("_", iso))
 
-        if (any(str_detect(colnames(df), "dpi"))) {
-          colnames(df) <- str_remove(colnames(df), "dpi")
-        }
-
+        colnames(df) <- str_remove(colnames(df), ".*_")
         return(df)
-      }) %>%
-        select(-ID) %>%
-        select(Sample, Rep, Date, Iso, everything()) %>%
-        pivot_longer(cols = -c(Sample, Rep, Date, Tray, Iso), names_to = "DPI", values_to = "Pheno") %>%
+        }) %>%
+        distinct() %>%
+        select(Sample, Date, Iso, everything()) %>%
+        pivot_longer(cols = -c(ID, Sample, Rep, Date, Test, Iso), names_to = "DPI", values_to = "Pheno") %>%
         mutate(DPI = str_remove(DPI, "dpi"), DPI = as.numeric(DPI)) %>%
         na.omit(Pheno) %>%
-        filter(reduce(across(everything(), ~.x != ""), `&`)) %>%
-        group_split(Sample, Rep, Date, Iso, Tray) %>%
-        map_dfr(~{
-          Pheno <- .x$Pheno
-          DPI <- .x$DPI
-          absoluteAUDPC <- safe_audpc(Pheno, DPI, "absolute")
-          relativeAUDPC <- safe_audpc(Pheno, DPI, "relative")
-          if(is.null(absoluteAUDPC[[1]]) || is.null(relativeAUDPC[[1]])){
-            absoluteAUDPC[[1]] <- NA
-            relativeAUDPC[[1]] <- NA
-          }
-          df <- .x %>%
-            mutate(absoluteAUDPC = absoluteAUDPC[[1]], relativeAUDPC = relativeAUDPC[[1]])
-        }) %>%
+        group_by(Sample, Date, Iso, Test, ID, Rep) %>%
+        summarise(absoluteAUDPC = audpc(Pheno, DPI, "absolute"), relativeAUDPC = audpc(Pheno, DPI, "relative")) %>%
+        ungroup() %>%
         group_split(Iso) %>%
         map_dfr(~{
           model <- NULL
@@ -396,28 +400,27 @@ server <- function(input, output, clientData, session) { # nolint
             group_by(Date) %>%
             summarise(n())
 
-          sumTray <- .x %>%
-            group_by(Date, Tray) %>%
+          sumTest <- .x %>%
+            group_by(Test) %>%
             summarise(n())
 
-          sumSample <- .x %>%
-            group_by(Sample) %>%
-            summarise(n())
-
-          if (nrow(sumSample) < 5) {
-            return(.x)
-          } else if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
+          if (nrow(sumDate) == 1 && nrow(sumTest) == 1) {
             model <- lmer(absoluteAUDPC ~ (1 | Sample), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
+          } else if (nrow(sumDate) == 1 && nrow(sumTest) > 1) {
+            model <- lmer(absoluteAUDPC ~ Test + (1 | Sample), # nolint: line_length_linter.
+                          data = .x,
+                          REML = TRUE,
+                          na.action = na.omit)
           } else if (nrow(sumDate) > 1) {
-            model <- lmer(absoluteAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
+            model <- lmer(absoluteAUDPC ~ (1 | Sample) + (1 | Date/Test), # nolint: line_length_linter.
                     data = .x,
                     REML = TRUE,
                     na.action = na.omit)
             if (hasConverged(model) != 1) {
-              model <- lmer(absoluteAUDPC ~ (1 | Sample) + (1 | Date:Tray), # nolint: line_length_linter.
+              model <- lmer(absoluteAUDPC ~ (1 | Sample) + (1 | Date:Test), # nolint: line_length_linter.
                             data = .x,
                             REML = TRUE,
                             na.action = na.omit)
@@ -432,7 +435,6 @@ server <- function(input, output, clientData, session) { # nolint
             res <- sum_mod$residuals
             pred_mod <- predict(model, se.fit = TRUE)
             pred <- pred_mod$fit
-            pred[pred < 0] <- 0
             se <- pred_mod$se.fit
 
             resultsAbsolute <- model@frame %>%
@@ -444,32 +446,34 @@ server <- function(input, output, clientData, session) { # nolint
                 mutate(Date = unique(sumDate$Date))
             }
 
-            if (!any(colnames(resultsAbsolute) == "Tray")) {
+            if (!any(colnames(resultsAbsolute) == "Test")) {
               resultsAbsolute <- resultsAbsolute %>%
-                mutate(Tray = unique(sumTray$Tray))
+                mutate(Test = unique(sumTest$Test))
             }
           }
 
           model <- NULL
 
-          if (nrow(sumDate) == 1 && nrow(sumTray) == 1) {
+          if (nrow(sumDate) == 1 && nrow(sumTest) == 1) {
             model <- lmer(relativeAUDPC ~ (1 | Sample), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
-          } else if (nrow(sumDate) > 1) {
-            model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Tray), # nolint: line_length_linter.
+          } else if (nrow(sumDate) == 1 && nrow(sumTest) > 1) {
+            model <- lmer(relativeAUDPC~ Test + (1 | Sample), # nolint: line_length_linter.
                           data = .x,
                           REML = TRUE,
                           na.action = na.omit)
+          } else if (nrow(sumDate) > 1) {
+            model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date/Test), # nolint: line_length_linter.
+                    data = .x,
+                    REML = TRUE,
+                    na.action = na.omit)
             if (hasConverged(model) != 1) {
-              model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date:Tray), # nolint: line_length_linter.
+              model <- lmer(relativeAUDPC ~ (1 | Sample) + (1 | Date:Test), # nolint: line_length_linter.
                             data = .x,
                             REML = TRUE,
                             na.action = na.omit)
-              if (hasConverged(model) == 1) {
-                print("Success! Model has converged on second attempt")
-              }
             }
           }
           if (is.null(model)) {
@@ -481,7 +485,6 @@ server <- function(input, output, clientData, session) { # nolint
             res <- sum_mod$residuals
             pred_mod <- predict(model, se.fit = TRUE)
             pred <- pred_mod$fit
-            pred[pred < 0] <- 0
             se <- pred_mod$se.fit
 
             resultsRelative <- model@frame %>%
@@ -493,28 +496,27 @@ server <- function(input, output, clientData, session) { # nolint
                 mutate(Date = unique(sumDate$Date))
             }
 
-            if (!any(colnames(resultsRelative) == "Tray")) {
+            if (!any(colnames(resultsRelative) == "Test")) {
               resultsRelative <- resultsRelative %>%
-                mutate(Tray = unique(sumTray$Tray))
+                mutate(Test = unique(sumTest$Test))
             }
 
-            results <- .x %>%
-              left_join(resultsAbsolute, by = c("Sample", "Date", "Tray", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
-              left_join(resultsRelative, by = c("Sample", "Date", "Tray", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
-              select(all_of(c("Sample", "Date", "Tray", "Iso",
-                              "predAbsoluteAUDPC", "absoluteAUDPC_Status",  "absoluteAUDPC_SE",
-                              "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE")))  %>%
-              distinct() %>%
-              arrange(Sample, Iso)
-              return(results)
+          results <- .x %>%
+              left_join(resultsAbsolute, by = c("Sample", "Date", "Test", "Iso", "absoluteAUDPC"), relationship = "many-to-many") %>%
+              left_join(resultsRelative, by = c("Sample", "Date", "Test", "Iso", "relativeAUDPC"), relationship = "many-to-many") %>%
+              select(all_of(c("Sample", "Date", "Test", "Iso",
+                              "absoluteAUDPC", "predAbsoluteAUDPC", "absoluteAUDPC_Status", "absoluteAUDPC_Residual", "absoluteAUDPC_SE",
+                              "relativeAUDPC", "predRelativeAUDPC", "relativeAUDPC_Status", "relativeAUDPC_SE", "relativeAUDPC_Residual")))  %>%
+              arrange(Sample, Date, Test, Iso)
+            return(results)
           }
         })
 
       if (length(unique(results1$Iso)) == 1) {
-        model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
-                    data = results1,
-                    REML = TRUE,
-                    na.action = na.omit)
+      model <- lmer(Pheno ~ (1 | Sample/DPI), # nolint: line_length_linter.
+                  data = results1,
+                  REML = TRUE,
+                  na.action = na.omit)
       } else {
         model <- lmer(Pheno ~ Iso + (1 | Sample/DPI), # nolint: line_length_linter.
                       data = results1,
@@ -529,35 +531,22 @@ server <- function(input, output, clientData, session) { # nolint
       audpcMod <- model@frame %>%
         mutate(Value = pred, SE = se) %>%
         mutate(Value = if_else(Value < 0, 0, Value)) %>%
-        select(!Pheno)
-
-      if (!any(colnames(audpcMod) == "Iso")) {
-        audpcMod <- audpcMod %>%
-          mutate(Iso = unique(results1$Iso), .after = "Sample") 
-      }
-
-      audpcMod <- audpcMod %>% select(Sample, Iso, DPI, Value, SE) %>%
+        select(!Pheno) %>%
         distinct()
-      
-      audpcTable <- audpcMod %>%
-        group_split(Sample, Iso) %>%
-        map_dfr(~{
-          dpis <- .x$DPI
-          values <- .x$Value
 
-        AUDPCRel <- audpc(values, dpis, type = "relative")
-        AUDPCAbs <- audpc(values, dpis, type = "absolute")
-        return(tibble(Sample = unique(.x$Sample),
-                Iso = unique(.x$Iso),
-                AUDPCRel = AUDPCRel,
-                AUDPCAbs = AUDPCAbs))
-      })
+      if(!any(colnames(audpcMod) == "Iso")) {
+        audpcMod <- audpcMod %>%
+        mutate(Iso = unique(results1$Iso), .after = "Sample") 
+      }
+      
+      audpcMod <- audpcMod %>%
+        select(Sample, Iso, DPI, Value, SE)
 
       resultsSelect <- audpcMod %>%
         group_by(Sample, Iso) %>%
         summarise(minDPI = min(DPI, na.rm = TRUE),
-          maxDPI = max(DPI, na.rm = TRUE),
-          totalDPI = n_distinct(DPI, na.rm = TRUE))
+        maxDPI = max(DPI, na.rm = TRUE),
+        totalDPI = n_distinct(DPI, na.rm = TRUE))
 
       output$results <- renderDT({
         datatable(resultsSelect, selection = "multiple", options = list(pageLength = 50, lengthChange = TRUE))
@@ -574,8 +563,7 @@ server <- function(input, output, clientData, session) { # nolint
               geom_line() +
               geom_point() +
               geom_area(aes(fill = Sample), alpha = 0.2) +
-              geom_errorbar(aes(ymin = Value - SE, ymax = Value + SE), width = 0.4) +
-              coord_cartesian(ylim = c(0, NA))
+              geom_errorbar(aes(ymin = Value - SE, ymax = Value + SE), width = 0.4)
 
         if(input$rotate == FALSE) {
           audpcPlot + facet_grid(Iso ~ Sample) +
@@ -594,20 +582,16 @@ server <- function(input, output, clientData, session) { # nolint
 
           fs <- c()
           if (any(input$filesForDownload %in% "1phase")) {
-            write.xlsx(results1, file = paste0("mixed_model_1phase", Sys.Date(), ".xlsx"), sep =",")
-            fs <- c(fs, paste0("mixed_model_1phase", Sys.Date(), ".xlsx"))
+            write.csv(results1, file = paste0("mixed_model_1phase", Sys.Date(), ".csv"), sep =",")
+            fs <- c(fs, paste0("mixed_model_1phase", Sys.Date(), ".csv"))
           }
           if (any(input$filesForDownload %in% "2phase")) {
-            write.xlsx(audpcMod, file = paste0("mixed_model_2phase", Sys.Date(), ".xlsx"), sep =",")
-            fs <- c(fs, paste0("mixed_model_2phase", Sys.Date(), ".xlsx"))
+            write.csv(audpcMod, file = paste0("mixed_model_2phase", Sys.Date(), ".csv"), sep =",")
+            fs <- c(fs, paste0("mixed_model_2phase", Sys.Date(), ".csv"))
           }
-          if (any(input$filesForDownload %in% "audpcMod1")) {
-            write.xlsx(results2, file = paste0("mixed_model_on_audpc", Sys.Date(), ".xlsx"), sep =",")
-            fs <- c(fs, paste0("mixed_model_on_audpc", Sys.Date(), ".xlsx"))
-          }
-          if (any(input$filesForDownload %in% "audpcMod2")) {
-            write.xlsx(audpcTable, file = paste0("audpc_from_mixed_model", Sys.Date(), ".xlsx"), sep =",")
-            fs <- c(fs, paste0("audpc_from_mixed_model", Sys.Date(), ".xlsx"))
+          if (any(input$filesForDownload %in% "audpcMod")) {
+            write.csv(results2, file = paste0("mixed_model_audpc", Sys.Date(), ".csv"), sep =",")
+            fs <- c(fs, paste0("mixed_model_audpc", Sys.Date(), ".csv"))
           }
           zip(zipfile=fname, files=fs)
         },

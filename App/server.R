@@ -69,7 +69,7 @@ server <- function(input, output, clientData, session) { # nolint
     req(file)
     req(folder)
 
-    if (input$search == TRUE) {
+    if (input$search == FALSE) {
       fileSep <- .Platform$file.sep
       df <- read.xlsx(xlsxFile = file$datapath,
                       colNames = TRUE,
@@ -124,7 +124,7 @@ server <- function(input, output, clientData, session) { # nolint
             height = height)},
             deleteFile = FALSE)
 
-    } else if (input$search == FALSE) {
+    } else if (input$search == TRUE) {
        df <- read.xlsx(xlsxFile = file$datapath, colNames = TRUE, rowNames = TRUE,
        detectDates = TRUE, skipEmptyRows = TRUE, na.strings = "N/A") # nolint: line_length_linter.
 

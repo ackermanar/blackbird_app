@@ -64,7 +64,7 @@ ui <- dashboardPage(
         fileInput("file", "Choose result file, e.g. 'Result .xlsx.'",
                   accept = ".xlsx"),
         textOutput("pathReadout"),
-        checkboxInput("search", "Use updated search path", value = TRUE)
+        checkboxInput("search", "Raw blackbird output data being used", value = FALSE)
       ),
       tabItem(tabName = "selector",
         verbatimTextOutput("text"),

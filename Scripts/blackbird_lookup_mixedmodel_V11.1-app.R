@@ -169,10 +169,15 @@ server <- function(input, output, clientData, session) { # nolint
         folderPath <- str_c(dirPath, fileSep, "Batch", df[input$tbl_cell_clicked$row, 1], "_Rep", df[input$tbl_cell_clicked$row, 2])
         allDirs <- list.dirs(folderPath, full.names = TRUE, recursive = FALSE)
         # Find the string in allDirs that ends with colName
+        req(input$tbl_cell_clicked)
         matchDir <- str_subset(allDirs, colnames(df)[input$tbl_cell_clicked$col])
+        if (length(matchDir) == 0) {
+          print(str_c(colnames(df)[input$tbl_cell_clicked$col], " not found in directory ", folderPath))
+        } else {
         image <- str_c(df[input$tbl_cell_clicked$row, 4], "-", df[input$tbl_cell_clicked$row, 6], "_", df[input$tbl_cell_clicked$row, 5], "_", df[input$tbl_cell_clicked$row, 3], ".png")
         imagePath <- str_c(matchDir, "1", image, sep = fileSep)
         imagePath
+        }
       })
 
       output$imageName <- renderText({

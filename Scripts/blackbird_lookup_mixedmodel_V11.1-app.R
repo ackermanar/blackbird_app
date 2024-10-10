@@ -145,7 +145,6 @@ server <- function(input, output, clientData, session) { # nolint
     req(file)
     req(folder)
 
-
     if (input$search == TRUE) {
       fileSep <- .Platform$file.sep
       df <- read.xlsx(xlsxFile = file$datapath,
@@ -159,34 +158,38 @@ server <- function(input, output, clientData, session) { # nolint
       output$tbl <- renderDT(df, server = TRUE,
                              selection = list(mode = "single", target = "cell", columns = dpi_columns))
 
-      dirPath <- str_c(parseDirPath(c("home" = get_root_dir()), folder), str_remove(basename(file$name), "_Results.*|\\..*$"), sep = fileSep)
-      output$pathReadout <- renderText({
-        str_c("Searching image folder on path:", dirPath)
-      })
+      dirPath <- str_c(parseDirPath(c("home" = get_root_dir()), folder), sep = fileSep)
 
+      output$pathReadout <- renderText({
+        str_c("Searching for images in folder along path: ", dirPath)
+      })
+        
+ 
       output$text <- renderPrint({
-        str_c(list.files(dirPath,
-                         str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
-                         full.names = TRUE),
-              "1",
-              str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
-              sep = fileSep)
+        folderPath <- str_c(dirPath, fileSep, "Batch", df[input$tbl_cell_clicked$row, 1], "_Rep", df[input$tbl_cell_clicked$row, 2])
+        allDirs <- list.dirs(folderPath, full.names = TRUE, recursive = FALSE)
+        # Find the string in allDirs that ends with colName
+        matchDir <- str_subset(allDirs, colnames(df)[input$tbl_cell_clicked$col])
+        image <- str_c(df[input$tbl_cell_clicked$row, 4], "-", df[input$tbl_cell_clicked$row, 6], "_", df[input$tbl_cell_clicked$row, 5], "_", df[input$tbl_cell_clicked$row, 3], ".png")
+        imagePath <- str_c(matchDir, "1", image, sep = fileSep)
+        imagePath
       })
 
       output$imageName <- renderText({
-        str_c("Image: ", str_c(rownames(df)[input$tbl_cell_clicked$row], " on ", colnames(df)[input$tbl_cell_clicked$col]))
+        str_c("Image: ", str_c(df[input$tbl_cell_clicked$row, 4], "-", df[input$tbl_cell_clicked$row, 6], "_", df[input$tbl_cell_clicked$row, 5], "_", df[input$tbl_cell_clicked$row, 3]))
       })
 
       # Render image
       output$image <- renderImage({
         width  <- clientData$output_image_width
         height <- clientData$output_image_height
-        list(src = str_c(list.files(dirPath,
-                                    str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
-                                    full.names = TRUE),
-                         "1",
-                         str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
-                         sep = fileSep),
+        folderPath <- str_c(dirPath, fileSep, "Batch", df[input$tbl_cell_clicked$row, 1], "_Rep", df[input$tbl_cell_clicked$row, 2])
+        allDirs <- list.dirs(folderPath, full.names = TRUE, recursive = FALSE)
+        # Find the string in allDirs that ends with colName
+        matchDir <- str_subset(allDirs, colnames(df)[input$tbl_cell_clicked$col])
+        image <- str_c(df[input$tbl_cell_clicked$row, 4], "-", df[input$tbl_cell_clicked$row, 6], "_", df[input$tbl_cell_clicked$row, 5], "_", df[input$tbl_cell_clicked$row, 3], ".png")
+        imagePath <- str_c(matchDir, "1", image, sep = fileSep)
+        list(src = imagePath,
             contentType = "image/png",
             width = width,
             height = height)},

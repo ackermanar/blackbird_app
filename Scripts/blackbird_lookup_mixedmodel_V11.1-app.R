@@ -41,6 +41,7 @@ library(lme4)
 library(Matrix)
 library(purrr)
 library(tidyverse)
+library(stringr)
 
 ui <- dashboardPage(
   dashboardHeader(title = "Blackbird Image Lookup"),
@@ -58,13 +59,15 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "upload",
         h3("Select the directory that contains the corresponding set of images."), # nolint: line_length_linter.
-        p('e.g. "2024 Blackbird Images"'),
+        p('e.g."2024 Blackbird Images" for updated pathfinder or "2020-11-17_15-00-00" for the older version'),
         shinyDirButton("folder", "Select the image folder",
                        "Please select image folder", multiple = FALSE),
         br(),
         br(),
-        fileInput("file", "Batch1_Combined_HempDMNet3_Results.xlsx''",
-                  accept = ".xlsx")
+        fileInput("file", "Choose result file, e.g. 'Result .xlsx.'",
+                  accept = ".xlsx"),
+        textOutput("pathReadout"),
+        checkboxInput("search", "Use updated search path", value = TRUE)
       ),
       tabItem(tabName = "selector",
         verbatimTextOutput("text"),
@@ -73,6 +76,7 @@ ui <- dashboardPage(
       tabItem(tabName = "viewer",
         fluidRow(
           column(width = 12,
+            textOutput("imageName"),
             imageOutput("image", width = "100%", height = "800px")
           )
         )
@@ -140,41 +144,91 @@ server <- function(input, output, clientData, session) { # nolint
     folder <- input$folder
     req(file)
     req(folder)
-    df <- read.xlsx(xlsxFile = file$datapath, colNames = TRUE, rowNames = FALSE,
-                    detectDates = TRUE, skipEmptyRows = TRUE, na.strings = "N/A") # nolint: line_length_linter.
 
-    # Find the directory path
-    dir_path <- parseDirPath(c("home" = get_root_dir()), folder)
 
-    # Find string that starts with "T" followed by a number
-    tray <- sub(".*T(\\d+).*", "\\1", parseDirPath(c("home" = "~"), folder)) # nolint: line_length_linter.
+    if (input$search == TRUE) {
+      fileSep <- .Platform$file.sep
+      df <- read.xlsx(xlsxFile = file$datapath,
+                      colNames = TRUE,
+                      rowNames = FALSE,
+                      detectDates = TRUE,
+                      skipEmptyRows = TRUE,
+                      na.strings = "N/A") # nolint: line_length_linter.
+      dpi_columns <- dpi_columns <- which(str_detect(names(df), "dpi"))
+      # Render tbl
+      output$tbl <- renderDT(df, server = TRUE,
+                             selection = list(mode = "single", target = "cell", columns = dpi_columns))
 
-    # Render tbl
-    output$tbl <- renderDT(df, server = TRUE,
-                           selection = list(mode = "single", target = "cell"))
+      dirPath <- str_c(parseDirPath(c("home" = get_root_dir()), folder), str_remove(basename(file$name), "_Results.*|\\..*$"), sep = fileSep)
+      output$pathReadout <- renderText({
+        str_c("Searching image folder on path:", dirPath)
+      })
 
-    output$text <- renderPrint({
-      validate(
-        need(sub(" Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
-      )
-      paste(
-        dir_path, # nolint: line_length_linter.
-        colnames(df)[input$tbl_cell_clicked$col],
-        tray,
-        paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
-        sep = .Platform$file.sep)
-    })
+      output$text <- renderPrint({
+        str_c(list.files(dirPath,
+                         str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
+                         full.names = TRUE),
+              "1",
+              str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
+              sep = fileSep)
+      })
 
-    # Render image
-    output$image <- renderImage({
-      width  <- clientData$output_image_width
-      height <- (clientData$output_image_height)
-      list(src = paste(dir_path,
-                       colnames(df)[input$tbl_cell_clicked$col],
-                       tray,
-                       paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
-                       sep = .Platform$file.sep), contentType = "image/png", width = width, height = height) # nolint: line_length_linter.
-    }, deleteFile = FALSE)
+      output$imageName <- renderText({
+        str_c("Image: ", str_c(rownames(df)[input$tbl_cell_clicked$row], " on ", colnames(df)[input$tbl_cell_clicked$col]))
+      })
+
+      # Render image
+      output$image <- renderImage({
+        width  <- clientData$output_image_width
+        height <- clientData$output_image_height
+        list(src = str_c(list.files(dirPath,
+                                    str_c("_", str_replace(colnames(df)[input$tbl_cell_clicked$col], "^(.*)(\\d+)$", "\\2\\1"), "$"),
+                                    full.names = TRUE),
+                         "1",
+                         str_c(rownames(df)[input$tbl_cell_clicked$row], ".png"),
+                         sep = fileSep),
+            contentType = "image/png",
+            width = width,
+            height = height)},
+            deleteFile = FALSE)
+
+    } else if (input$search == FALSE) {
+       df <- read.xlsx(xlsxFile = file$datapath, colNames = TRUE, rowNames = TRUE,
+       detectDates = TRUE, skipEmptyRows = TRUE, na.strings = "N/A") # nolint: line_length_linter.
+
+      # Find the directory path
+      dir_path <- parseDirPath(c("home" = get_root_dir()), folder)
+      # Find string that starts with "T" followed by a number
+      tray <- sub(".*T(\\d+).*", "\\1", parseDirPath(c("home" = "~"), folder)) # nolint: line_length_linter.
+
+      # Render tbl
+      output$tbl <- renderDT(df, server = TRUE,
+                             selection = list(mode = "single", target = "cell"))
+
+      output$text <- renderPrint({
+        validate(
+          need(sub(" Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
+        )
+        paste(
+          dir_path, # nolint: line_length_linter.
+          colnames(df)[input$tbl_cell_clicked$col],
+          tray,
+          paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
+          sep = .Platform$file.sep)
+
+              # Render image
+      output$image <- renderImage({
+        width  <- clientData$output_image_width
+        height <- clientData$output_image_height
+        list(src = paste(dir_path,
+                        colnames(df)[input$tbl_cell_clicked$col],
+                        tray,
+                        paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
+                        sep = .Platform$file.sep), contentType = "image/png", width = width, height = height) # nolint: line_length_linter.
+      }, deleteFile = FALSE)
+      })
+    }
+
   }) %>%
     bindEvent(c(input$file, input$folder))
 

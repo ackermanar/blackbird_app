@@ -130,8 +130,6 @@ server <- function(input, output, clientData, session) { # nolint
 
       # Find the directory path
       dir_path <- parseDirPath(c("home" = get_root_dir()), folder)
-      # Find string that starts with "T" followed by a number
-      tray <- sub(".*T(\\d+).*", "\\1", parseDirPath(c("home" = "~"), folder)) # nolint: line_length_linter.
 
       # Render tbl
       output$tbl <- renderDT(df, server = TRUE,
@@ -139,30 +137,28 @@ server <- function(input, output, clientData, session) { # nolint
 
       output$text <- renderPrint({
         validate(
-          need(sub(" Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
+          need(sub("_Results.xlsx", "", file$name) == basename(dir_path), "Image file and result file do not match") # nolint: line_length_linter.
         )
         paste(
           dir_path, # nolint: line_length_linter.
           colnames(df)[input$tbl_cell_clicked$col],
-          tray,
+          "1",
           paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
           sep = .Platform$file.sep)
-
+      })
               # Render image
       output$image <- renderImage({
         width  <- clientData$output_image_width
         height <- clientData$output_image_height
         list(src = paste(dir_path,
                         colnames(df)[input$tbl_cell_clicked$col],
-                        tray,
+                        "1",
                         paste0(rownames(df)[input$tbl_cell_clicked$row], ".png"), # nolint: line_length_linter.
                         sep = .Platform$file.sep), contentType = "image/png", width = width, height = height) # nolint: line_length_linter.
       }, deleteFile = FALSE)
-      })
     }
-
   }) %>%
-    bindEvent(c(input$file, input$folder))
+    bindEvent(c(input$file, input$folder, input$search))
 
   # Cacluate Output Files
   observe({

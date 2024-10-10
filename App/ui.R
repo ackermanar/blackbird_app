@@ -56,14 +56,14 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "upload",
         h3("Select the directory that contains the corresponding set of images."), # nolint: line_length_linter.
-        p('e.g. "2024 Blackbird Images" for updated pathfinder or "2020-11-17_15-00-00" for the older version'),
+        p("e.g.2024 Blackbird Images for updated pathfinder (combined results) or Batch1_Result1 for the older version (raw blackbird output)"),
         shinyDirButton("folder", "Select the image folder",
                        "Please select image folder", multiple = FALSE),
-        textOutput("pathReadout"),
         br(),
         br(),
         fileInput("file", "Choose result file, e.g. 'Result .xlsx.'",
                   accept = ".xlsx"),
+        textOutput("pathReadout"),
         checkboxInput("search", "Use updated search path", value = TRUE)
       ),
       tabItem(tabName = "selector",
